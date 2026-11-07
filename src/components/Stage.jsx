@@ -9,7 +9,7 @@ function peekFor(hubNode, kids) {
   const season = seasonOf(hubNode.season)
   let li = 0
   return kids.map((k) => {
-    if (k.type === 'hub') return { node: k, key: 'tote15' }
+    if (k.type === 'hub') return { node: k, key: 'hubTote' }
     const key = k.piece && season.pieces.includes(k.piece) ? k.piece : season.pieces[li % season.pieces.length]
     li++
     return { node: k, key }

@@ -79,6 +79,20 @@ export default function App() {
     return () => removeEventListener('keydown', onKey)
   }, [])
 
+  // ---- item scale: one number (--ts) that every tote/piece/cube size is a multiple of.
+  // Phones: two items side by side; desktop: capped; short windows: a tote still fits.
+  useEffect(() => {
+    const fit = () => {
+      const w = window.innerWidth
+      const h = window.innerHeight
+      const ts = Math.max(0.9, Math.min(2.05, (w - 40) / 330, (h - 170) / 270))
+      document.documentElement.style.setProperty('--ts', ts.toFixed(3))
+    }
+    fit()
+    addEventListener('resize', fit)
+    return () => removeEventListener('resize', fit)
+  }, [])
+
   // ---- routing
   useEffect(() => {
     const onHash = () => {
@@ -224,19 +238,19 @@ export default function App() {
           </select>
         )}
         {canEditAnything(profile) && route.kind !== 'admin' && (
-          <button type="button" className={`ctl ${editMode ? 'on' : ''}`} onClick={() => setEditMode((v) => !v)} aria-pressed={editMode}>
-            <i className="ti ti-pencil" aria-hidden="true" /> {editMode ? 'סיום עריכה' : 'עריכה'}
+          <button type="button" className={`ctl ${editMode ? 'on' : ''}`} onClick={() => setEditMode((v) => !v)} aria-pressed={editMode} aria-label={editMode ? 'סיום עריכה' : 'עריכה'}>
+            <i className="ti ti-pencil" aria-hidden="true" /> <span className="ctl-label">{editMode ? 'סיום עריכה' : 'עריכה'}</span>
           </button>
         )}
         <button type="button" className="ctl about-btn" onClick={() => setAbout(true)} aria-label="אודות">
           <i className="ti ti-info-circle" aria-hidden="true" /> <span>אודות</span>
         </button>
         {profile?.role === 'mentor' && route.kind !== 'admin' && (
-          <a className="ctl" href="#/admin"><i className="ti ti-users" aria-hidden="true" /> משתמשים</a>
+          <a className="ctl" href="#/admin" aria-label="משתמשים"><i className="ti ti-users" aria-hidden="true" /> <span className="ctl-label">משתמשים</span></a>
         )}
         {auth.user ? (
-          <button type="button" className="ctl" onClick={() => store.signOut()} title={profile ? ROLE_LABEL[profile.role] : ''}>
-            <i className="ti ti-logout" aria-hidden="true" /> יציאה
+          <button type="button" className="ctl" aria-label="יציאה" onClick={() => store.signOut()} title={profile ? ROLE_LABEL[profile.role] : ''}>
+            <i className="ti ti-logout" aria-hidden="true" /> <span className="ctl-label">יציאה</span>
           </button>
         ) : (
           !isDemo && (
@@ -313,7 +327,6 @@ export default function App() {
             />
           )}
         </div>
-        {route.kind === 'home' && nodes && !editMode && <p className="hint">ארגז = האב · רחפו לפתיחה, לחצו להיכנס</p>}
       </main>
 
       {drawer && store && (

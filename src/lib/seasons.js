@@ -230,6 +230,20 @@ export const PIECES = {
   frisbeeB: { he: 'Frisbee כחול', draw: () => ({ svg: disc(['#b3ccff', '#2f6fe0', '#13357d']), box: box(50, 51, 60, 38), tone: 'l' }) },
   tote15y: { he: 'Tote צהוב', draw: () => ({ svg: binShape(['#ffe680', '#f2c800', '#a88a00']), box: box(50, 61, 60, 52), tone: 'd' }) },
   noodle: { he: 'Litter (פול נודל)', draw: () => ({ svg: pipe(['#b6f5a0', '#3fbf3f', '#1f6e22'], '#0f3d12'), box: box(42, 50, 66, 38), tone: 'd' }) },
+  // ---- Not a game piece: a sub-hub shown inside another tote's peek / search results.
+  // A closed kit tote with its lid on, so it never looks like 2015's open Tote piece.
+  hubTote: {
+    he: 'ארגז',
+    draw: () => ({
+      svg: S('<polygon points="10,34 90,34 83,95 17,95" fill="#8a8981"/>' +
+        '<line x1="26" y1="40" x2="29" y2="93" stroke="rgba(0,0,0,.2)"/><line x1="74" y1="40" x2="71" y2="93" stroke="rgba(0,0,0,.2)"/>' +
+        '<path d="M4 20 L50 12 L96 20 L96 34 L4 34 Z" fill="#9d9c95"/><path d="M4 20 L50 12 L96 20" fill="none" stroke="#b9b8b1" stroke-width="2"/>' +
+        '<line x1="50" y1="12" x2="50" y2="34" stroke="rgba(0,0,0,.35)" stroke-width="1.5"/>' +
+        '<rect x="18" y="31" width="9" height="12" rx="1.5" fill="#9d9c95" stroke="rgba(0,0,0,.25)"/><rect x="73" y="31" width="9" height="12" rx="1.5" fill="#9d9c95" stroke="rgba(0,0,0,.25)"/>' +
+        '<rect x="4" y="32" width="92" height="3" fill="rgba(0,0,0,.3)"/>'),
+      box: box(50, 66, 56, 44), tone: 'l',
+    }),
+  },
   // ---- 2011 Logo Motion
   tubeTri: { he: 'משולש אדום', draw: () => ({ svg: tubeShape('triangle', ['#ffb3b3', '#e03131', '#8a1414']), box: box(50, 64, 40, 26), tone: 'l' }) },
   tubeCirc: { he: 'עיגול לבן', draw: () => ({ svg: tubeShape('circle', ['#ffffff', '#eef0f3', '#9aa1ab']), box: box(50, 50, 44, 44), tone: 'l' }) },

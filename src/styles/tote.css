@@ -80,16 +80,16 @@
 
 
 /* ---------- Link cube (home page) ---------- */
-.cube { width: 160px; height: 160px; position: relative; transform-style: preserve-3d; transform: rotateX(-24deg) rotateY(-32deg); transition: transform .3s; }
+.cube { width: var(--cs); height: var(--cs); position: relative; transform-style: preserve-3d; transform: rotateX(-24deg) rotateY(-32deg); transition: transform .3s; }
 .item.on:not(.denied) .cube { transform: rotateX(-24deg) rotateY(-32deg) translateY(-10px); }
 .cf { position: absolute; inset: 0; box-sizing: border-box; }
-.c1 { background: #1a2380; transform: translateZ(var(--cz, 80px)); border: 1px solid rgba(255,255,255,.14); transition: border-color .2s; }
-.c2 { background: #2a35b0; transform: rotateX(90deg) translateZ(var(--cz, 80px)); }
-.c3 { background: #111862; transform: rotateY(90deg) translateZ(var(--cz, 80px)); }
+.c1 { background: #1a2380; transform: translateZ(calc(var(--cs) / 2)); border: 1px solid rgba(255,255,255,.14); transition: border-color .2s; }
+.c2 { background: #2a35b0; transform: rotateX(90deg) translateZ(calc(var(--cs) / 2)); }
+.c3 { background: #111862; transform: rotateY(90deg) translateZ(calc(var(--cs) / 2)); }
 .item.on:not(.denied) .c1 { border-color: var(--orange); }
 
 /* ---------- Game pieces ---------- */
-.bob { position: relative; width: 196px; height: 196px; animation: flo 3.2s ease-in-out infinite; }
+.bob { position: relative; width: calc(96px * var(--ts)); height: calc(96px * var(--ts)); animation: flo 3.2s ease-in-out infinite; }
 @keyframes flo { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-7px) } }
 .piece-svg { position: absolute; inset: 0; }
 .item.on:not(.denied) .piece-svg { filter: drop-shadow(0 0 9px rgba(255,140,18,.85)); }

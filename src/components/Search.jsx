@@ -164,7 +164,7 @@ function ResultIcon({ entry }) {
   const n = entry.node
   const img = n.imageData || n.imageUrl
   if (img) return <span className="sr-icon"><img key={img} {...imgSrcProps(n)} alt="" /></span>
-  const key = n.type === 'hub' ? 'tote15' : entry.parentSeason ? n.piece || entry.parentSeason.pieces[0] : null
+  const key = n.type === 'hub' ? 'hubTote' : entry.parentSeason ? n.piece || entry.parentSeason.pieces[0] : null
   if (!key) return <span className="sr-icon cube-icon" />
   return <span className="sr-icon" dangerouslySetInnerHTML={{ __html: drawPiece(key).svg }} />
 }
