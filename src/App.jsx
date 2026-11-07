@@ -6,6 +6,7 @@ import Stage from './components/Stage.jsx'
 import Drawer from './components/Drawer.jsx'
 import Admin from './components/Admin.jsx'
 import Search from './components/Search.jsx'
+import About from './components/About.jsx'
 
 // Routes: #/  ·  #/admin  ·  #/software/vision (hub path by slug)  ·  #/h/<id> (old links)
 const parseHash = () => {
@@ -30,6 +31,7 @@ export default function App() {
   const [editMode, setEditMode] = useState(false)
   const [drawer, setDrawer] = useState(null) // { node } | { parentId }
   const [gate, setGate] = useState(null) // locked item the viewer can't open
+  const [about, setAbout] = useState(false)
   const [toastMsg, setToastMsg] = useState('')
   const pendingEnter = useRef(null)
   const urlCache = useRef(new Map())
@@ -72,7 +74,7 @@ export default function App() {
   useEffect(() => { if (!canEditAnything(profile)) setEditMode(false) }, [profile])
   useEffect(() => { urlCache.current.clear() }, [profile?.role])
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') { setDrawer(null); setGate(null) } }
+    const onKey = (e) => { if (e.key === 'Escape') { setDrawer(null); setGate(null); setAbout(false) } }
     addEventListener('keydown', onKey)
     return () => removeEventListener('keydown', onKey)
   }, [])
@@ -226,6 +228,9 @@ export default function App() {
             <i className="ti ti-pencil" aria-hidden="true" /> {editMode ? 'סיום עריכה' : 'עריכה'}
           </button>
         )}
+        <button type="button" className="ctl about-btn" onClick={() => setAbout(true)} aria-label="אודות">
+          <i className="ti ti-info-circle" aria-hidden="true" /> <span>אודות</span>
+        </button>
         {profile?.role === 'mentor' && route.kind !== 'admin' && (
           <a className="ctl" href="#/admin"><i className="ti ti-users" aria-hidden="true" /> משתמשים</a>
         )}
@@ -314,6 +319,8 @@ export default function App() {
           onClose={() => setDrawer(null)}
         />
       )}
+
+      {about && <About onClose={() => setAbout(false)} />}
 
       {gate && (
         <div className="scrim center" onMouseDown={(e) => e.target === e.currentTarget && setGate(null)}>

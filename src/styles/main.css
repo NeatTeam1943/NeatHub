@@ -255,3 +255,17 @@ a { color: inherit; }
   .topbar { position: relative; }
   .search.expanded .search-results { inset-inline: 16px; width: auto; top: calc(100% - 4px); }
 }
+
+/* ---------- about ---------- */
+.modal.about { width: min(560px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; text-align: start; align-items: stretch; gap: 10px; position: relative; padding: 26px 26px 22px; }
+.modal.about h2 { font-size: 20px; padding-inline-end: 32px; }
+.modal.about h3 { margin: 8px 0 0; font-size: 15px; font-weight: 500; color: var(--orange); }
+.modal.about p, .modal.about li { color: rgba(255,255,255,.82); font-size: 14px; line-height: 1.65; }
+.modal.about b { color: #fff; font-weight: 500; }
+.modal.about ul { margin: 0; padding-inline-start: 20px; display: flex; flex-direction: column; gap: 4px; }
+.about-note { background: rgba(255,140,18,.12); border-inline-start: 3px solid var(--orange); padding: 8px 12px; border-radius: 0; }
+.about-url { display: block; font-size: 12px; background: rgba(255,255,255,.07); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; color: #ffc98f; overflow-wrap: anywhere; }
+.about-x { position: absolute; top: 14px; inset-inline-end: 14px; }
+.modal.about .btn.primary { align-self: flex-start; margin-top: 6px; padding: 0 22px; }
+@media (max-width: 560px) { .about-btn span { display: none; } }
+.nowrap { white-space: nowrap; }

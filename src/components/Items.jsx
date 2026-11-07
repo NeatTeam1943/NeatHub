@@ -71,6 +71,24 @@ export function FitLabel({ node, tone = 'l', style, max = 16, min = 8 }) {
 }
 
 // ---------------------------------------------------------------- Tote (hub)
+// Where peek item i (of n) sits. Items fill rows of up to 4, front row lowest;
+// each row behind rises higher. Positions are in tote units (front face = 140×80).
+function peekSlot(i, n) {
+  const perRow = n <= 4 ? n : Math.ceil(n / Math.ceil(n / 4))
+  const size = Math.min(54, Math.floor(172 / perRow))
+  const r = Math.floor(i / perRow)
+  const rows = Math.ceil(n / perRow)
+  const inRow = Math.min(perRow, n - r * perRow)
+  const col = i - r * perRow
+  const x = 70 + (col - (inRow - 1) / 2) * size * 0.92
+  const restTop = 80 - size // resting inside the tote
+  const finalTop = -size * 1.3 - r * size * 0.62
+  return {
+    width: size, height: size, left: x - size / 2, top: restTop, zIndex: rows - r,
+    '--i': i, '--up': `${finalTop - restTop}px`,
+  }
+}
+
 function LidTop({ hole }) {
   return (
     <div className="fic lidtop">
@@ -94,7 +112,7 @@ export function Tote({ node, season, peek }) {
       {peek?.length > 0 && (
         <div className="peek" aria-hidden="true">
           {peek.map(({ node: kid, key }, i) => (
-            <div key={kid.id} className="pk" style={{ '--i': i, '--up': `${peek.length === 3 && i === 1 ? -116 : -102}px` }}>
+            <div key={kid.id} className="pk" style={peekSlot(i, peek.length)}>
               <Piece node={kid} pieceKey={key} max={11} min={4.5} />
             </div>
           ))}

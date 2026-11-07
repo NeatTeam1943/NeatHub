@@ -3,14 +3,12 @@ import { Tote, Piece, Cube } from './Items.jsx'
 import { seasonOf } from '../lib/seasons.js'
 import { canView, canEditScope } from '../lib/model.js'
 
-const PEEK_MAX = 3
-
-// Small pieces that rise out of an opened tote: its first few children, drawn as the
+// Pieces that rise out of an opened tote: all of its children, drawn as the
 // tote's season pieces (links) or little totes (sub-hubs).
 function peekFor(hubNode, kids) {
   const season = seasonOf(hubNode.season)
   let li = 0
-  return kids.slice(0, PEEK_MAX).map((k) => {
+  return kids.map((k) => {
     if (k.type === 'hub') return { node: k, key: 'tote15' }
     const key = k.piece && season.pieces.includes(k.piece) ? k.piece : season.pieces[li % season.pieces.length]
     li++
