@@ -72,11 +72,12 @@ export function FitLabel({ node, tone = 'l', style, max = 16, min = 8 }) {
 }
 
 // ---------------------------------------------------------------- Tote (hub)
-// Where peek item i (of n) sits. Items fill rows of up to 4, front row lowest;
+// Where peek item i (of n) sits. Items fill rows of up to 3, front row lowest;
 // each row behind rises higher. Positions are in tote units (front face = 140×80).
 function peekSlot(i, n) {
-  const perRow = n <= 4 ? n : Math.ceil(n / Math.ceil(n / 4))
-  const size = Math.min(54, Math.floor(172 / perRow))
+  // Rows of at most 3 — wider rows cross the tote's side walls, which breaks 3D layering.
+  const perRow = Math.min(3, n)
+  const size = n > 6 ? 46 : 54
   const r = Math.floor(i / perRow)
   const rows = Math.ceil(n / perRow)
   const inRow = Math.min(perRow, n - r * perRow)
