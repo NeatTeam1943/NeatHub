@@ -254,6 +254,14 @@ export default function App() {
       <main className="stage" ref={stageRef}>
         {hub && !hubLocked && (
           <div className="hub-bar">
+            <button
+              type="button"
+              className="back-btn"
+              onClick={() => goUp(hub.parentId || null)}
+              title={`חזרה ל${trail.length > 1 ? trail[trail.length - 2].title : 'דף הבית'}`}
+            >
+              <i className="ti ti-arrow-right" aria-hidden="true" /> חזרה
+            </button>
             {canEditHere ? (
               <label className="season-pick">
                 <span>עונה</span>

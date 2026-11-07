@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ancestors, canView } from '../lib/model.js'
 import { drawPiece, seasonOf } from '../lib/seasons.js'
+import { imgSrcProps } from '../lib/links.js'
 
 // Hebrew-friendly normalisation: lower-case, strip niqqud/punctuation, fold final letters.
 const FINALS = { 'ך': 'כ', 'ם': 'מ', 'ן': 'נ', 'ף': 'פ', 'ץ': 'צ' }
@@ -162,7 +163,7 @@ export default function Search({ nodes, profile, onPick }) {
 function ResultIcon({ entry }) {
   const n = entry.node
   const img = n.imageData || n.imageUrl
-  if (img) return <span className="sr-icon"><img src={img} alt="" /></span>
+  if (img) return <span className="sr-icon"><img key={img} {...imgSrcProps(n)} alt="" /></span>
   const key = n.type === 'hub' ? 'tote15' : entry.parentSeason ? n.piece || entry.parentSeason.pieces[0] : null
   if (!key) return <span className="sr-icon cube-icon" />
   return <span className="sr-icon" dangerouslySetInnerHTML={{ __html: drawPiece(key).svg }} />

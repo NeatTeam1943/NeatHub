@@ -7,7 +7,8 @@
 //   labelMode    'txt' | 'img' | 'both'
 //   labelText    string             text printed on the tote / piece
 //   imageData    string | null      small data: URL (resized client-side)
-//   imageUrl     string | null      external image (e.g. site favicon)
+//   imageUrl     string | null      external image (e.g. site / Google-app icon)
+//   imageFallback string | null     used if imageUrl fails to load
 //   season       number             hubs only — which season's pieces are inside
 //   piece        string | null      links only — override the auto piece
 //   visibility   'public'|'members'|'leads'|'mentors'   set on this node

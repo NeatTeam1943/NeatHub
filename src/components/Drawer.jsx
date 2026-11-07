@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { SEASONS, PIECES, seasonOf, seasonLabel, DEFAULT_SEASON } from '../lib/seasons.js'
 import { VIS_LABEL, VIS_RANK, childrenOf, descendants, canEditScope, recomputeSubtree, newId, ancestors, slugify, hubPath, SLUG_RE, RESERVED_SLUGS } from '../lib/model.js'
-import { detectLink, faviconFor, isValidUrl, resizeImage } from '../lib/links.js'
+import { detectLink, siteIconFor, isValidUrl, resizeImage } from '../lib/links.js'
 import { Tote, Piece, Cube } from './Items.jsx'
 
 // Add / edit one node. `node` is null for a new item created inside `parentId`.
@@ -50,7 +50,7 @@ export default function Drawer({ node, parentId, nodes, profile, store, onClose,
     if (!f) return
     try {
       const data = await resizeImage(f)
-      set({ imageData: data, imageUrl: null, labelMode: d.labelMode === 'txt' ? 'both' : d.labelMode })
+      set({ imageData: data, imageUrl: null, imageFallback: null, labelMode: d.labelMode === 'txt' ? 'both' : d.labelMode })
     } catch {
       setErr('לא הצלחתי לקרוא את התמונה.')
     }
@@ -191,12 +191,12 @@ export default function Drawer({ node, parentId, nodes, profile, store, onClose,
             <div className="row-btns">
               <label className="btn"><i className="ti ti-upload" aria-hidden="true" /> העלאה<input type="file" accept="image/*" hidden onChange={onImage} /></label>
               {d.type === 'link' && isValidUrl(url) && (
-                <button type="button" className="btn" onClick={() => set({ imageUrl: faviconFor(url), imageData: null })}>
+                <button type="button" className="btn" onClick={() => set({ ...siteIconFor(url), imageData: null })}>
                   <i className="ti ti-world" aria-hidden="true" /> אייקון האתר
                 </button>
               )}
               {(d.imageData || d.imageUrl) && (
-                <button type="button" className="btn ghost" onClick={() => set({ imageData: null, imageUrl: null })}>הסרה</button>
+                <button type="button" className="btn ghost" onClick={() => set({ imageData: null, imageUrl: null, imageFallback: null })}>הסרה</button>
               )}
             </div>
           </div>

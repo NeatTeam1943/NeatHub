@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef } from 'react'
 import { drawPiece } from '../lib/seasons.js'
+import { imgSrcProps } from '../lib/links.js'
 
 const imgOf = (n) => n.imageData || n.imageUrl || null
 const modeOf = (n) => (imgOf(n) ? n.labelMode || 'both' : 'txt')
@@ -63,7 +64,7 @@ export function FitLabel({ node, tone = 'l', style, max = 16, min = 8 }) {
   return (
     <div ref={ref} className={`fitbox ${tone === 'd' ? 'd' : 'l'}`} style={style}>
       <div className="fi">
-        {mode !== 'txt' && <img src={img} alt="" draggable="false" />}
+        {mode !== 'txt' && <img key={img} {...imgSrcProps(node)} alt="" draggable="false" />}
         {mode !== 'img' && <span className="ft">{text}</span>}
       </div>
     </div>
