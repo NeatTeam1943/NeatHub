@@ -1,17 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getStore, isDemo } from './lib/store.js'
-import { childrenOf, ancestors, canView, canEditScope, canEditAnything, recomputeSubtree, ROLE_LABEL } from './lib/model.js'
+import { childrenOf, ancestors, canView, canEditScope, canEditAnything, recomputeSubtree, ROLE_LABEL, hubPath, resolvePath } from './lib/model.js'
 import { SEASONS, seasonOf, seasonLabel } from './lib/seasons.js'
 import Stage from './components/Stage.jsx'
 import Drawer from './components/Drawer.jsx'
 import Admin from './components/Admin.jsx'
 
+// Routes: #/  ·  #/admin  ·  #/software/vision (hub path by slug)  ·  #/h/<id> (old links)
 const parseHash = () => {
-  const h = location.hash.replace(/^#\/?/, '')
-  if (h === 'admin') return { kind: 'admin' }
-  const m = h.match(/^h\/(.+)$/)
-  return m ? { kind: 'hub', id: decodeURIComponent(m[1]) } : { kind: 'home' }
+  const h = location.hash.replace(/^#\/?/, '').replace(/\/+$/, '')
+  if (h === 'admin') return { kind: 'admin', key: 'admin' }
+  const legacy = h.match(/^h\/([^/]+)$/)
+  if (legacy) return { kind: 'legacy', id: decodeURIComponent(legacy[1]), key: h }
+  const segs = h ? h.split('/').map((s) => { try { return decodeURIComponent(s) } catch { return s } }) : []
+  return { kind: segs.length ? 'hub' : 'home', segs, key: h }
 }
+const hrefFor = (nodes, id) => (id ? `#/${hubPath(nodes, id)}` : '#/')
 const reduced = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 const ANIM_MS = 360
 
@@ -19,7 +23,7 @@ export default function App() {
   const [store, setStore] = useState(null)
   const [nodes, setNodes] = useState(null)
   const [loadErr, setLoadErr] = useState('')
-  const [auth, setAuth] = useState({ user: null, profile: null })
+  const [auth, setAuth] = useState({ user: null, profile: null, ready: false })
   const [route, setRoute] = useState(parseHash)
   const [anim, setAnim] = useState({ cls: 'enter-fade', origin: '50% 50%' })
   const [editMode, setEditMode] = useState(false)
@@ -44,7 +48,7 @@ export default function App() {
       if (cancelled) return
       setStore(s)
       unsubs.push(s.onNodes(setNodes, () => setLoadErr('לא הצלחתי לטעון את ההאב.')))
-      unsubs.push(s.onAuth(setAuth))
+      unsubs.push(s.onAuth((a) => setAuth({ ...a, ready: true })))
     })
     return () => { cancelled = true; unsubs.forEach((u) => u()) }
   }, [])
@@ -68,13 +72,43 @@ export default function App() {
     return () => removeEventListener('hashchange', onHash)
   }, [])
 
-  const hub = route.kind === 'hub' && nodes ? nodes.find((n) => n.id === route.id) || null : null
+  const hub = useMemo(() => (route.kind === 'hub' && nodes ? resolvePath(nodes, route.segs) : null), [nodes, route])
   useEffect(() => {
-    if (nodes && route.kind === 'hub' && (!hub || hub.type !== 'hub')) location.hash = '#/'
+    if (!nodes) return
+    if (route.kind === 'legacy') {
+      const n = nodes.find((x) => x.id === route.id && x.type === 'hub')
+      location.replace(n ? hrefFor(nodes, n.id) : '#/')
+    } else if (route.kind === 'hub') {
+      if (!hub) location.replace('#/')
+      else {
+        // Normalise (e.g. a link that used an id instead of the slug).
+        const canonical = hubPath(nodes, hub.id)
+        if (canonical !== route.key) history.replaceState(null, '', '#/' + canonical)
+      }
+    }
   }, [nodes, route, hub])
 
-  const items = useMemo(() => (nodes && route.kind !== 'admin' ? childrenOf(nodes, hub ? hub.id : null) : []), [nodes, hub, route.kind])
+  // A shared link to a locked hub: show a lock screen instead of its contents.
+  const hubLocked = !!hub && !canView(profile, hub.effVis)
+  const items = useMemo(
+    () => (nodes && route.kind !== 'admin' && !hubLocked ? childrenOf(nodes, hub ? hub.id : null) : []),
+    [nodes, hub, route.kind, hubLocked],
+  )
   const trail = hub ? ancestors(nodes, hub.id) : []
+
+  const shareHub = async () => {
+    const url = location.href
+    try {
+      if (navigator.share && matchMedia('(pointer: coarse)').matches) {
+        await navigator.share({ title: `${hub.title} · NEATHUB`, url })
+        return
+      }
+      await navigator.clipboard.writeText(url)
+      toast('הקישור הועתק')
+    } catch (e) {
+      if (e?.name !== 'AbortError') window.prompt('העתיקו את הקישור:', url)
+    }
+  }
 
   // Prefetch URLs of links on this level so clicks open synchronously (no popup blocker).
   useEffect(() => {
@@ -94,9 +128,9 @@ export default function App() {
   const enterHub = (el, node) => {
     const r = el.getBoundingClientRect()
     const s = stageRef.current.getBoundingClientRect()
-    go(`#/h/${encodeURIComponent(node.id)}`, 'leave-in', 'enter-in', `${r.left - s.left + r.width / 2}px ${r.top - s.top + r.height / 2}px`)
+    go(hrefFor(nodes, node.id), 'leave-in', 'enter-in', `${r.left - s.left + r.width / 2}px ${r.top - s.top + r.height / 2}px`)
   }
-  const goUp = (id) => go(id ? `#/h/${encodeURIComponent(id)}` : '#/', 'leave-out', 'enter-out')
+  const goUp = (id) => go(hrefFor(nodes, id), 'leave-out', 'enter-out')
 
   const openLink = async (node) => {
     const cached = urlCache.current.get(node.id)
@@ -149,7 +183,7 @@ export default function App() {
                 {trail.map((n, i) => (
                   <span key={n.id}>
                     {' › '}
-                    {i === trail.length - 1 ? <b>{n.title}</b> : <a href={`#/h/${n.id}`} onClick={(e) => { e.preventDefault(); goUp(n.id) }}>{n.title}</a>}
+                    {i === trail.length - 1 ? <b>{n.title}</b> : <a href={hrefFor(nodes, n.id)} onClick={(e) => { e.preventDefault(); goUp(n.id) }}>{n.title}</a>}
                   </span>
                 ))}
               </>
@@ -191,7 +225,7 @@ export default function App() {
       )}
 
       <main className="stage" ref={stageRef}>
-        {hub && (
+        {hub && !hubLocked && (
           <div className="hub-bar">
             {canEditHere ? (
               <label className="season-pick">
@@ -203,13 +237,32 @@ export default function App() {
             ) : (
               <span className="season-tag">{seasonLabel(season)}</span>
             )}
+            <button type="button" className="share-btn" onClick={shareHub}>
+              <i className="ti ti-link" aria-hidden="true" /> העתקת קישור
+            </button>
           </div>
         )}
-        <div key={route.kind + (route.id || '')} className={`view ${anim.cls}`} style={{ transformOrigin: anim.origin }}>
+        <div key={route.key} className={`view ${anim.cls}`} style={{ transformOrigin: anim.origin }}>
           {loadErr ? (
             <p className="empty">{loadErr}</p>
-          ) : !nodes ? (
+          ) : !nodes || (hubLocked && !auth.ready) ? (
             <p className="empty">טוען…</p>
+          ) : hubLocked ? (
+            <div className="locked-hub">
+              <i className="ti ti-lock big-lock" aria-hidden="true" />
+              <h2>{hub.title}</h2>
+              {auth.user ? (
+                <p>אין לך הרשאה לפתוח את הארגז הזה. אפשר לבקש ממנטור.</p>
+              ) : (
+                <>
+                  <p>צריך להתחבר כדי לפתוח את הארגז הזה.</p>
+                  <button type="button" className="btn primary" onClick={() => store.signIn().catch(() => {})}>
+                    <i className="ti ti-brand-google" aria-hidden="true" /> {isDemo ? 'כניסה (דמו: מנטור)' : 'כניסה עם Google'}
+                  </button>
+                </>
+              )}
+              <a className="btn ghost" href="#/">לדף הבית</a>
+            </div>
           ) : route.kind === 'admin' ? (
             profile?.role === 'mentor' ? <Admin store={store} nodes={nodes} me={profile} toast={toast} /> : <p className="empty">רק מנטורים יכולים לנהל משתמשים.</p>
           ) : (

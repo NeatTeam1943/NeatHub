@@ -95,7 +95,8 @@
 @keyframes flo { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-7px) } }
 .piece-svg { position: absolute; inset: 0; }
 .item:hover .piece-svg, .hit:focus-visible .piece-svg { filter: drop-shadow(0 0 9px rgba(255,140,18,.85)); }
-.lab { position: absolute; transform: translate(-50%, -50%); text-align: center; font-size: 11px; font-weight: 500; line-height: 1.1; pointer-events: none; overflow-wrap: anywhere; }
+.lab { position: absolute; transform: translate(-50%, -50%); text-align: center; font-size: 11px; font-weight: 500; line-height: 1.1; pointer-events: none; overflow-wrap: break-word; }
+.lab.long { font-size: 10px; letter-spacing: -.01em; }
 .lab img { display: block; margin: 0 auto; object-fit: contain; border-radius: 8px; }
 .lab.m-img img { width: 46px; height: 46px; }
 .lab.m-both img { width: 30px; height: 30px; margin-bottom: 3px; }

@@ -86,6 +86,39 @@ export function recomputeSubtree(nodes, node) {
   return changed
 }
 
+// ---- Shareable hub paths: #/software/vision
+// Each hub has an optional `slug` (a-z, 0-9, '-'), unique among its siblings.
+// A path segment matches a child hub by slug, or by id as a fallback.
+export const RESERVED_SLUGS = ['admin', 'h']
+export const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,39}$/
+
+export function slugify(title) {
+  return (title || '')
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40)
+}
+
+export const segOf = (n) => n.slug || n.id
+
+export function hubPath(nodes, id) {
+  return ancestors(nodes, id).map((n) => encodeURIComponent(segOf(n))).join('/')
+}
+
+export function resolvePath(nodes, segs) {
+  let parent = null
+  let cur = null
+  for (const seg of segs) {
+    const kids = childrenOf(nodes, parent).filter((n) => n.type === 'hub')
+    cur = kids.find((n) => n.slug === seg) || kids.find((n) => n.id === seg)
+    if (!cur) return null
+    parent = cur.id
+  }
+  return cur
+}
+
 export function newId() {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4)
 }

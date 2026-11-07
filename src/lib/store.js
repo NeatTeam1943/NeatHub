@@ -92,7 +92,7 @@ async function firebaseStore() {
 
 // ---------------------------------------------------------------- Demo
 function demoStore() {
-  const KEY = 'neathub-demo-v1'
+  const KEY = 'neathub-demo-v2'
   let state
   try { state = JSON.parse(localStorage.getItem(KEY)) } catch { state = null }
   if (!state?.nodes) state = { ...seedDemo(), role: 'guest' }

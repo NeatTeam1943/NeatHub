@@ -3,6 +3,7 @@ import { drawPiece } from '../lib/seasons.js'
 const imgOf = (n) => n.imageData || n.imageUrl || null
 const modeOf = (n) => (imgOf(n) ? n.labelMode || 'both' : 'txt')
 const textOf = (n) => (n.labelText ?? '').trim() || n.title
+const longWord = (t) => Math.max(0, ...t.split(/\s+/).map((w) => w.length))
 
 // ---------------------------------------------------------------- Tote (hub)
 function LidTop({ hole }) {
@@ -59,8 +60,8 @@ export function Piece({ node, pieceKey }) {
     <>
       <div className="piece-svg" dangerouslySetInnerHTML={{ __html: p.svg }} />
       <div
-        className={`lab ${p.tone === 'd' ? 'd' : 'l'} m-${mode}`}
-        style={{ left: `${p.x}%`, top: `${p.y}%`, maxWidth: p.maxW || 60 }}
+        className={`lab ${p.tone === 'd' ? 'd' : 'l'} m-${mode} ${longWord(textOf(node)) > 9 ? 'long' : ''}`}
+        style={{ left: `${p.x}%`, top: `${p.y}%`, maxWidth: p.maxW || 70 }}
       >
         {mode !== 'txt' && <img src={img} alt="" draggable="false" />}
         {mode !== 'img' && <span>{textOf(node)}</span>}

@@ -34,6 +34,7 @@ service cloud.firestore {
         && visValue(d.visibility) && visValue(d.effVis)
         && d.labelMode in ['txt', 'img', 'both']
         && (!('imageData' in d) || d.imageData == null || (d.imageData is string && d.imageData.size() < 300000))
+        && (!('slug' in d) || d.slug == null || (d.slug is string && d.slug.matches('[a-z0-9][a-z0-9-]{0,39}')))
         && (d.type == 'link' || d.season is int);
     }
 

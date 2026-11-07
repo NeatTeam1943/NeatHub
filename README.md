@@ -39,9 +39,13 @@ Each item's visibility is `public / members / leads / mentors`. A tote's visibil
 
 The hub only hides links. Files in Drive keep their own sharing settings — a Drive file shared "anyone with the link" is still open to anyone who gets the link elsewhere.
 
+## Shareable links
+
+Every hub has its own address built from slugs, e.g. `https://<owner>.github.io/NeatHub/#/software/vision`. Each hub page has a **copy link** button (on phones it opens the share sheet). The slug is set in the hub's editor (English letters, digits, `-`; empty = from the name) and must be unique among its siblings. Changing a slug breaks links already shared. Old `#/h/<id>` links redirect to the new path. A link to a locked hub shows a lock screen with sign-in.
+
 ## Data model
 
-- `nodes/{id}` — public: `parentId`, `type` (`hub`/`link`), `title`, `labelMode` (`txt`/`img`/`both`), `labelText`, `imageData` / `imageUrl`, `season` (hubs), `piece` (link piece override), `visibility`, `effVis`, `scope` (top-level tote id, or `root`), `order`.
+- `nodes/{id}` — public: `parentId`, `type` (`hub`/`link`), `title`, `labelMode` (`txt`/`img`/`both`), `labelText`, `imageData` / `imageUrl`, `season` and `slug` (hubs), `piece` (link piece override), `visibility`, `effVis`, `scope` (top-level tote id, or `root`), `order`.
 - `nodeUrls/{id}` — `url`, `visibility` (= effVis), `scope`.
 - `users/{uid}` — `name`, `email`, `photo`, `role` (`pending`/`member`/`lead`/`mentor`), `scopes` (top-level tote ids a lead may edit).
 

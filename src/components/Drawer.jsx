@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { SEASONS, PIECES, seasonOf, seasonLabel, DEFAULT_SEASON } from '../lib/seasons.js'
-import { VIS_LABEL, VIS_RANK, childrenOf, descendants, canEditScope, recomputeSubtree, newId, ancestors } from '../lib/model.js'
+import { VIS_LABEL, VIS_RANK, childrenOf, descendants, canEditScope, recomputeSubtree, newId, ancestors, slugify, hubPath, SLUG_RE, RESERVED_SLUGS } from '../lib/model.js'
 import { detectLink, faviconFor, isValidUrl, resizeImage } from '../lib/links.js'
 import { Tote, Piece, Cube } from './Items.jsx'
 
@@ -62,10 +62,19 @@ export default function Drawer({ node, parentId, nodes, profile, store, onClose,
     if (!d.title.trim()) return setErr('צריך שם.')
     if (d.type === 'link' && !isValidUrl(url)) return setErr('הקישור צריך להתחיל ב-https://')
     if (d.labelMode !== 'txt' && !d.imageData && !d.imageUrl) return setErr('בחרו תמונה, או עברו למצב טקסט.')
+    let slug = null
+    if (d.type === 'hub') {
+      slug = (d.slug || '').trim() || slugify(d.title) || null
+      if (slug && !SLUG_RE.test(slug)) return setErr('כתובת: רק אותיות באנגלית, ספרות ומקפים.')
+      if (slug && !d.parentId && RESERVED_SLUGS.includes(slug)) return setErr(`הכתובת "${slug}" שמורה. בחרו אחרת.`)
+      const clash = childrenOf(nodes, d.parentId ?? null).some((n) => n.id !== d.id && n.type === 'hub' && (n.slug || n.id) === slug)
+      if (slug && clash) return setErr('כבר יש ארגז עם הכתובת הזאת באותו מקום.')
+    }
     const order = isNew ? Math.max(-1, ...siblings.map((s) => s.order ?? 0)) + 1 : d.order
     const clean = {
       ...d, title: d.title.trim(), labelText: (d.labelText || '').trim(), order,
       season: d.type === 'hub' ? d.season : null,
+      slug,
       piece: d.type === 'link' ? d.piece : null,
     }
     if (!isNew && clean.parentId !== node.parentId) {
@@ -191,6 +200,23 @@ export default function Drawer({ node, parentId, nodes, profile, store, onClose,
               )}
             </div>
           </div>
+        )}
+
+        {d.type === 'hub' && (
+          <label className="field">
+            <span className="lbl">כתובת לשיתוף</span>
+            <div className="slug-row" dir="ltr">
+              <span className="slug-prefix">{d.parentId ? `#/${hubPath(nodes, d.parentId)}/` : '#/'}</span>
+              <input
+                dir="ltr"
+                value={d.slug ?? ''}
+                onChange={(e) => set({ slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-') })}
+                placeholder={slugify(d.title) || 'software'}
+                maxLength={40}
+              />
+            </div>
+            <span className="hint">באנגלית. ריק = לפי השם{!isNew && node.slug ? ' · שינוי ישבור קישורים ששותפו' : ''}.</span>
+          </label>
         )}
 
         {d.type === 'hub' && (

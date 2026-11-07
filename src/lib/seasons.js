@@ -59,7 +59,7 @@ export const PIECES = {
     he: 'Note',
     draw: () => ({
       svg: S('<ellipse cx="50" cy="58" rx="40" ry="21" fill="none" stroke="#a85700" stroke-width="15"/><ellipse cx="50" cy="52" rx="40" ry="21" fill="none" stroke="#ff8c12" stroke-width="15"/><ellipse cx="50" cy="45" rx="40" ry="20" fill="none" stroke="#ffb35c" stroke-width="2" opacity=".6"/>'),
-      x: 50, y: 54, tone: 'l',
+      x: 50, y: 54, tone: 'l', maxW: 80,
     }),
   },
   cone: {
