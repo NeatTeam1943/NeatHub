@@ -5,6 +5,7 @@ import { SEASONS, seasonOf, seasonLabel } from './lib/seasons.js'
 import Stage from './components/Stage.jsx'
 import Drawer from './components/Drawer.jsx'
 import Admin from './components/Admin.jsx'
+import Search from './components/Search.jsx'
 
 // Routes: #/  ·  #/admin  ·  #/software/vision (hub path by slug)  ·  #/h/<id> (old links)
 const parseHash = () => {
@@ -163,6 +164,11 @@ export default function App() {
     }
   }
 
+  const pickSearch = (node) => {
+    if (node.type === 'hub') go(hrefFor(nodes, node.id), 'leave-out', 'enter-in')
+    else openLink(node)
+  }
+
   const activate = (el, node) => {
     if (!canView(profile, node.effVis)) { setGate(node); return }
     if (node.type === 'hub') enterHub(el, node)
@@ -206,6 +212,7 @@ export default function App() {
           )}
         </nav>
         <div className="spacer" />
+        {nodes && route.kind !== 'admin' && <Search nodes={nodes} profile={profile} onPick={pickSearch} />}
         {isDemo && store?.setDemoRole && (
           <select className="ctl demo" value={profile?.role || 'guest'} onChange={(e) => store.setDemoRole(e.target.value)} aria-label="מצב דמו – תפקיד">
             <option value="guest">דמו: אורח</option>

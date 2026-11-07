@@ -60,13 +60,8 @@ export default function Stage({ hub, items, profile, editMode, onActivate, onEdi
         const peek = item.type === 'hub' && allowed ? peekFor(item, kidsOf(item.id)) : null
         let body
         if (item.type === 'hub') {
-          body = hub ? (
-            <div className="bob" style={{ animationDelay: `-${i * 0.6}s` }}>
-              <div className="mini"><Tote node={item} season={seasonOf(item.season)} peek={peek} /></div>
-            </div>
-          ) : (
-            <Tote node={item} season={seasonOf(item.season)} peek={peek} />
-          )
+          // A tote is the same full size at every level, including sub-hubs.
+          body = <Tote node={item} season={seasonOf(item.season)} peek={peek} />
         } else if (hub) {
           const key = item.piece && season.pieces.includes(item.piece) ? item.piece : season.pieces[linkIdx % season.pieces.length]
           linkIdx++
@@ -97,7 +92,7 @@ export default function Stage({ hub, items, profile, editMode, onActivate, onEdi
               onBlur={() => setActive((a) => (a === item.id ? null : a))}
             >
               {body}
-              <div className={hub ? 'psh' : 'sh'} />
+              <div className={hub && item.type !== 'hub' ? 'psh' : 'sh'} />
             </button>
             {locked && <span className="lock" title="דורש הרשאה"><i className="ti ti-lock" aria-hidden="true" /></span>}
             {editable && (
