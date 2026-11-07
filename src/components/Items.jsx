@@ -9,7 +9,7 @@ const textOf = (n) => (n.labelText ?? '').trim() || n.title
 // Image and/or text centred in a fixed box. The text is shrunk (and, as a last
 // resort, broken inside words) until everything fits fully inside the box.
 // Wide boxes put the image beside the text; tall boxes stack them.
-export function FitLabel({ node, tone = 'l', style, max = 15, min = 8 }) {
+export function FitLabel({ node, tone = 'l', style, max = 16, min = 8 }) {
   const ref = useRef()
   const img = imgOf(node)
   const mode = modeOf(node)
@@ -93,7 +93,11 @@ export function Tote({ node, season, peek }) {
       <div className="fc bk" />
       {peek?.length > 0 && (
         <div className="peek" aria-hidden="true">
-          {peek.map((svg, i) => <div key={i} className="pk" style={{ '--i': i, '--up': `${peek.length === 3 && i === 1 ? -104 : -94}px` }} dangerouslySetInnerHTML={{ __html: svg }} />)}
+          {peek.map(({ node: kid, key }, i) => (
+            <div key={kid.id} className="pk" style={{ '--i': i, '--up': `${peek.length === 3 && i === 1 ? -116 : -102}px` }}>
+              <Piece node={kid} pieceKey={key} max={11} min={4.5} />
+            </div>
+          ))}
         </div>
       )}
       <div className="fc lf"><div className="hd" /></div>
@@ -117,7 +121,7 @@ export function Tote({ node, season, peek }) {
 }
 
 // ---------------------------------------------------------------- Piece (link inside a hub)
-export function Piece({ node, pieceKey }) {
+export function Piece({ node, pieceKey, max, min }) {
   const p = drawPiece(pieceKey)
   const b = p.box
   return (
@@ -126,6 +130,8 @@ export function Piece({ node, pieceKey }) {
       <FitLabel
         node={node}
         tone={p.tone}
+        max={max ?? 16}
+        min={min ?? 8}
         style={{ left: `${b.x - b.w / 2}%`, top: `${b.y - b.h / 2}%`, width: `${b.w}%`, height: `${b.h}%` }}
       />
     </>

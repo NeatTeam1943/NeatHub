@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Tote, Piece, Cube } from './Items.jsx'
-import { seasonOf, drawPiece } from '../lib/seasons.js'
+import { seasonOf } from '../lib/seasons.js'
 import { canView, canEditScope } from '../lib/model.js'
 
 const PEEK_MAX = 3
@@ -11,10 +11,10 @@ function peekFor(hubNode, kids) {
   const season = seasonOf(hubNode.season)
   let li = 0
   return kids.slice(0, PEEK_MAX).map((k) => {
-    if (k.type === 'hub') return drawPiece('tote15').svg
+    if (k.type === 'hub') return { node: k, key: 'tote15' }
     const key = k.piece && season.pieces.includes(k.piece) ? k.piece : season.pieces[li % season.pieces.length]
     li++
-    return drawPiece(key).svg
+    return { node: k, key }
   })
 }
 
