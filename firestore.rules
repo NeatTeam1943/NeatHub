@@ -1,0 +1,75 @@
+rules_version = '2';
+
+// NEATHUB security rules.
+//  - nodes:    public read (titles, labels, season). Writes only by editors of the node's scope.
+//  - nodeUrls: the actual links. Read gated by effective visibility, so locked URLs never reach guests.
+//  - users:    each user creates their own doc as 'pending'; only mentors change roles/scopes.
+// Season, visibility, order, labels… are all node fields, so only editors can change them.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function hasProfile() {
+      return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+    function me() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
+    function isMentor() { return hasProfile() && me().role == 'mentor'; }
+    function canEditScope(scope) {
+      return isMentor() || (hasProfile() && me().role == 'lead' && scope in me().scopes);
+    }
+    function canSee(vis) {
+      return vis == 'public'
+        || (hasProfile() && (
+             (vis == 'members' && me().role in ['member', 'lead', 'mentor'])
+          || (vis == 'leads'   && me().role in ['lead', 'mentor'])
+          || (vis == 'mentors' && me().role == 'mentor')));
+    }
+    function visValue(v) { return v in ['public', 'members', 'leads', 'mentors']; }
+    function validNode(d) {
+      return d.keys().hasAll(['parentId', 'type', 'title', 'scope', 'order', 'visibility', 'effVis', 'labelMode'])
+        && d.type in ['hub', 'link']
+        && d.title is string && d.title.size() > 0 && d.title.size() <= 60
+        && d.scope is string
+        && d.order is number
+        && visValue(d.visibility) && visValue(d.effVis)
+        && d.labelMode in ['txt', 'img', 'both']
+        && (!('imageData' in d) || d.imageData == null || (d.imageData is string && d.imageData.size() < 300000))
+        && (d.type == 'link' || d.season is int);
+    }
+
+    match /nodes/{id} {
+      allow read: if true;
+      // Top-level items (parentId == null) can only be created by mentors.
+      allow create: if canEditScope(request.resource.data.scope)
+                    && validNode(request.resource.data)
+                    && (request.resource.data.parentId != null || isMentor());
+      // Leads can't move items out of their scope; mentors can.
+      allow update: if canEditScope(resource.data.scope)
+                    && validNode(request.resource.data)
+                    && (isMentor() || (request.resource.data.scope == resource.data.scope
+                                       && (request.resource.data.parentId == resource.data.parentId
+                                           || request.resource.data.parentId != null)));
+      // Leads can't delete a whole top-level tote.
+      allow delete: if isMentor() || (canEditScope(resource.data.scope) && resource.data.parentId != null);
+    }
+
+    match /nodeUrls/{id} {
+      allow read: if canSee(resource.data.visibility) || canEditScope(resource.data.scope);
+      allow create, update: if canEditScope(request.resource.data.scope)
+                            && (resource == null || canEditScope(resource.data.scope))
+                            && request.resource.data.url is string
+                            && request.resource.data.url.matches('https?://.+')
+                            && request.resource.data.url.size() < 2000
+                            && visValue(request.resource.data.visibility);
+      allow delete: if canEditScope(resource.data.scope);
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isMentor());
+      allow create: if signedIn() && request.auth.uid == uid
+                    && request.resource.data.role == 'pending'
+                    && request.resource.data.scopes.size() == 0;
+      allow update, delete: if isMentor();
+    }
+  }
+}
