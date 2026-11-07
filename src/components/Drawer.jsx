@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { SEASONS, PIECES, seasonOf, seasonLabel, DEFAULT_SEASON } from '../lib/seasons.js'
 import { VIS_LABEL, VIS_RANK, childrenOf, descendants, canEditScope, recomputeSubtree, newId, ancestors, slugify, hubPath, SLUG_RE, RESERVED_SLUGS } from '../lib/model.js'
-import { detectLink, siteIconFor, isValidUrl, resizeImage } from '../lib/links.js'
+import { detectLink, findSiteIcon, isValidUrl, resizeImage } from '../lib/links.js'
 import { Tote, Piece, Cube } from './Items.jsx'
 
 // Add / edit one node. `node` is null for a new item created inside `parentId`.
@@ -18,6 +18,7 @@ export default function Drawer({ node, parentId, nodes, profile, store, onClose,
   const [url, setUrl] = useState('')
   const [origUrl, setOrigUrl] = useState('')
   const [busy, setBusy] = useState(false)
+  const [iconBusy, setIconBusy] = useState(false)
   const [err, setErr] = useState('')
   const set = (patch) => setD((x) => ({ ...x, ...patch }))
 
@@ -44,6 +45,16 @@ export default function Drawer({ node, parentId, nodes, profile, store, onClose,
 
   const siblings = childrenOf(nodes, d.parentId ?? null).filter((n) => n.id !== d.id)
   const subtree = isNew ? [] : descendants(nodes, d.id)
+
+  async function pickSiteIcon() {
+    setIconBusy(true)
+    try {
+      const icon = await findSiteIcon(url.trim())
+      set({ ...icon, imageData: null, labelMode: d.labelMode === 'txt' ? 'both' : d.labelMode })
+    } finally {
+      setIconBusy(false)
+    }
+  }
 
   async function onImage(e) {
     const f = e.target.files?.[0]
@@ -191,8 +202,8 @@ export default function Drawer({ node, parentId, nodes, profile, store, onClose,
             <div className="row-btns">
               <label className="btn"><i className="ti ti-upload" aria-hidden="true" /> העלאה<input type="file" accept="image/*" hidden onChange={onImage} /></label>
               {d.type === 'link' && isValidUrl(url) && (
-                <button type="button" className="btn" onClick={() => set({ ...siteIconFor(url), imageData: null })}>
-                  <i className="ti ti-world" aria-hidden="true" /> אייקון האתר
+                <button type="button" className="btn" disabled={iconBusy} onClick={pickSiteIcon}>
+                  <i className="ti ti-world" aria-hidden="true" /> {iconBusy ? 'מחפש…' : 'אייקון האתר'}
                 </button>
               )}
               {(d.imageData || d.imageUrl) && (
