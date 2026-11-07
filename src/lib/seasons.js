@@ -1,8 +1,7 @@
 // FRC seasons and their game pieces, drawn as inline SVG.
-// Each piece renderer returns { svg, x, y, tone, maxW }:
-//   x/y   – where the label (image/text) is centred, in % of the piece box
+// Each piece renderer returns { svg, box, tone }:
+//   box   – label safe area { x, y, w, h } (centre + size, % of the piece box)
 //   tone  – 'd' = dark label (light piece), 'l' = light label (dark piece)
-//   maxW  – optional max label width in px
 
 let uid = 0
 const grad = (c0, c1, c2) => {
@@ -37,104 +36,109 @@ const gearPath = (cx, cy, ro, ri, n) => {
 const fuelHoles = [[30, 30], [52, 22], [72, 34], [24, 54], [76, 58], [36, 76], [60, 78]]
   .map(([x, y]) => `<circle cx="${x}" cy="${y}" r="4" fill="rgba(90,60,0,.45)"/>`).join('')
 
-// Basketball seams are rotated up-and-right so the seam crossing sits away
-// from the label, which is moved down-left into the clear panel.
+// Basketball seams sit near the edges so the centre panel stays clear for the label.
 const bballSeams =
-  '<path d="M74 -16 C56 6 56 46 74 68 M74 -16 C92 6 92 46 74 68 M0 26 H100" stroke="#3a1600" stroke-width="2.2" fill="none"/>'
+  '<path d="M4 22 Q50 30 96 22" stroke="#3a1600" stroke-width="2.2" fill="none"/>' +
+  '<path d="M25 9 C5 36 5 66 25 93 M75 9 C95 36 95 66 75 93" stroke="#3a1600" stroke-width="2.2" fill="none"/>'
+
+// Every piece declares its label "safe box" (centre x/y and width/height, in % of the
+// 100×100 piece). The label is auto-shrunk until it fits entirely inside that box.
+const box = (x, y, w, h) => ({ x, y, w, h })
+const BALL = (r) => box(50, 50, r * 1.42, r * 1.32)
 
 export const PIECES = {
-  fuel26: { he: 'Fuel', draw: () => ({ svg: ball('#fff7b0', '#f2cf00', '#9c7d00', 40), x: 50, y: 50, tone: 'd' }) },
+  fuel26: { he: 'Fuel', draw: () => ({ svg: ball('#fff7b0', '#f2cf00', '#9c7d00', 44), box: BALL(44), tone: 'd' }) },
   coral: {
     he: 'Coral',
     draw: () => ({
       svg: S(
-        '<rect x="10" y="34" width="74" height="32" rx="4" fill="url(#coralG)"/><ellipse cx="84" cy="50" rx="8" ry="16" fill="#eef0f2" stroke="#a9afb7"/><ellipse cx="84" cy="50" rx="5" ry="11" fill="#7d848e"/>',
+        '<rect x="6" y="27" width="78" height="46" rx="6" fill="url(#coralG)"/><ellipse cx="84" cy="50" rx="10" ry="23" fill="#eef0f2" stroke="#a9afb7"/><ellipse cx="84" cy="50" rx="6" ry="16" fill="#7d848e"/>',
         '<linearGradient id="coralG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".6" stop-color="#e3e6ea"/><stop offset="1" stop-color="#aeb4bc"/></linearGradient>',
       ),
-      x: 46, y: 50, tone: 'd',
+      box: box(42, 50, 66, 38), tone: 'd',
     }),
   },
-  algae: { he: 'Algae', draw: () => ({ svg: ball('#c8fff3', '#22b8a0', '#0a5b50', 38), x: 50, y: 50, tone: 'l' }) },
+  algae: { he: 'Algae', draw: () => ({ svg: ball('#c8fff3', '#22b8a0', '#0a5b50', 42), box: BALL(42), tone: 'l' }) },
   note: {
     he: 'Note',
     draw: () => ({
-      svg: S('<ellipse cx="50" cy="58" rx="40" ry="21" fill="none" stroke="#a85700" stroke-width="15"/><ellipse cx="50" cy="52" rx="40" ry="21" fill="none" stroke="#ff8c12" stroke-width="15"/><ellipse cx="50" cy="45" rx="40" ry="20" fill="none" stroke="#ffb35c" stroke-width="2" opacity=".6"/>'),
-      x: 50, y: 54, tone: 'l', maxW: 80,
+      svg: S('<ellipse cx="50" cy="56" rx="42" ry="31" fill="none" stroke="#a85700" stroke-width="14"/><ellipse cx="50" cy="50" rx="42" ry="31" fill="none" stroke="#ff8c12" stroke-width="14"/><ellipse cx="50" cy="43" rx="42" ry="30" fill="none" stroke="#ffb35c" stroke-width="2" opacity=".55"/>'),
+      box: box(50, 50, 54, 36), tone: 'l',
     }),
   },
   cone: {
     he: 'Cone',
     draw: () => ({
       svg: S(
-        '<rect x="16" y="78" width="68" height="12" rx="2" fill="#c9a400"/><polygon points="50,8 75,80 25,80" fill="url(#coneG)"/>',
+        '<rect x="8" y="84" width="84" height="12" rx="2" fill="#c9a400"/><polygon points="50,2 92,86 8,86" fill="url(#coneG)"/>',
         '<linearGradient id="coneG" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#b89200"/><stop offset=".4" stop-color="#ffe45c"/><stop offset="1" stop-color="#c9a000"/></linearGradient>',
       ),
-      x: 50, y: 60, tone: 'd', maxW: 46,
+      box: box(50, 69, 58, 28), tone: 'd',
     }),
   },
   cube23: {
     he: 'Cube',
     draw: () => ({
-      svg: S('<g stroke-linejoin="round" stroke-width="6"><polygon points="20,36 36,20 80,20 64,36" fill="#9d6bff" stroke="#9d6bff"/><polygon points="64,36 80,20 80,66 64,82" fill="#5526b0" stroke="#5526b0"/><polygon points="20,36 64,36 64,82 20,82" fill="#7a3df0" stroke="#7a3df0"/></g>'),
-      x: 42, y: 59, tone: 'l', maxW: 50,
+      svg: S('<g stroke-linejoin="round" stroke-width="6"><polygon points="8,28 24,12 92,12 76,28" fill="#9d6bff" stroke="#9d6bff"/><polygon points="76,28 92,12 92,80 76,96" fill="#5526b0" stroke="#5526b0"/><polygon points="8,28 76,28 76,96 8,96" fill="#7a3df0" stroke="#7a3df0"/></g>'),
+      box: box(42, 62, 60, 60), tone: 'l',
     }),
   },
-  cargoR: { he: 'Cargo אדום', draw: () => ({ svg: ball('#ffb3b3', '#e03131', '#7a1010', 40), x: 50, y: 50, tone: 'l' }) },
-  cargoB: { he: 'Cargo כחול', draw: () => ({ svg: ball('#b3ccff', '#2f6fe0', '#0e2c7a', 40), x: 50, y: 50, tone: 'l' }) },
-  cell: { he: 'Power Cell', draw: () => ({ svg: ball('#fff4a0', '#ecc800', '#8f7300', 40), x: 50, y: 50, tone: 'd' }) },
-  cargo19: { he: 'Cargo', draw: () => ({ svg: ball('#ffd0a0', '#ff8a1f', '#9a4300', 40), x: 50, y: 50, tone: 'd' }) },
+  cargoR: { he: 'Cargo אדום', draw: () => ({ svg: ball('#ffb3b3', '#e03131', '#7a1010', 44), box: BALL(44), tone: 'l' }) },
+  cargoB: { he: 'Cargo כחול', draw: () => ({ svg: ball('#b3ccff', '#2f6fe0', '#0e2c7a', 44), box: BALL(44), tone: 'l' }) },
+  cell: { he: 'Power Cell', draw: () => ({ svg: ball('#fff4a0', '#ecc800', '#8f7300', 44), box: BALL(44), tone: 'd' }) },
+  cargo19: { he: 'Cargo', draw: () => ({ svg: ball('#ffd0a0', '#ff8a1f', '#9a4300', 44), box: BALL(44), tone: 'd' }) },
   hatch: {
     he: 'Hatch Panel',
     draw: () => ({
-      svg: S('<circle cx="50" cy="52" r="43" fill="#8f949b"/><circle cx="50" cy="49" r="43" fill="#c9ccd1" stroke="#9aa0a8" stroke-width="3"/><circle cx="50" cy="49" r="30" fill="none" stroke="#aeb3ba" stroke-width="1.5"/><circle cx="50" cy="49" r="11" fill="rgba(0,0,0,.45)"/>'),
-      x: 50, y: 49, tone: 'd',
+      svg: S('<circle cx="50" cy="53" r="46" fill="#8f949b"/><circle cx="50" cy="49" r="46" fill="#d3d6da" stroke="#9aa0a8" stroke-width="3"/><circle cx="50" cy="49" r="38" fill="none" stroke="#b8bdc4" stroke-width="1.5"/>'),
+      box: box(50, 49, 60, 56), tone: 'd',
     }),
   },
   pcube: {
     he: 'Power Cube',
     draw: () => ({
-      svg: S('<g stroke-linejoin="round" stroke-width="5"><polygon points="18,36 34,20 82,20 66,36" fill="#ffe14d" stroke="#ffe14d"/><polygon points="66,36 82,20 82,68 66,84" fill="#c49e00" stroke="#c49e00"/><polygon points="18,36 66,36 66,84 18,84" fill="#f2c800" stroke="#f2c800"/></g><rect x="24" y="42" width="36" height="36" fill="none" stroke="#9c7d00" stroke-dasharray="3 2"/>'),
-      x: 42, y: 60, tone: 'd', maxW: 50,
+      svg: S('<g stroke-linejoin="round" stroke-width="5"><polygon points="8,28 24,12 92,12 76,28" fill="#ffe14d" stroke="#ffe14d"/><polygon points="76,28 92,12 92,80 76,96" fill="#c49e00" stroke="#c49e00"/><polygon points="8,28 76,28 76,96 8,96" fill="#f2c800" stroke="#f2c800"/></g><rect x="14" y="34" width="56" height="56" fill="none" stroke="#b08e00" stroke-dasharray="3 2"/>'),
+      box: box(42, 62, 50, 50), tone: 'd',
     }),
   },
-  fuel17: { he: 'Fuel', draw: () => ({ svg: ball('#fffbd0', '#f5e030', '#a88f00', 36, fuelHoles), x: 50, y: 50, tone: 'd' }) },
+  fuel17: { he: 'Fuel', draw: () => ({ svg: ball('#fffbd0', '#f5e030', '#a88f00', 42, fuelHoles), box: BALL(42), tone: 'd' }) },
   gear: {
     he: 'Gear',
     draw: () => ({
-      svg: S(`<path d="${gearPath(50, 52, 44, 36, 12)}" fill="#9c7d00"/><path d="${gearPath(50, 48, 44, 36, 12)}" fill="#f2c800" stroke="#c49e00" stroke-width="1.5"/><circle cx="50" cy="48" r="22" fill="#e0b800"/>`),
-      x: 50, y: 48, tone: 'd',
+      svg: S(`<path d="${gearPath(50, 53, 48, 40, 12)}" fill="#9c7d00"/><path d="${gearPath(50, 49, 48, 40, 12)}" fill="#f2c800" stroke="#c49e00" stroke-width="1.5"/><circle cx="50" cy="49" r="32" fill="#e8c300"/>`),
+      box: box(50, 49, 50, 46), tone: 'd',
     }),
   },
-  boulder: { he: 'Boulder', draw: () => ({ svg: ball('#d6d6d6', '#8c8c8c', '#3f3f3f', 43), x: 50, y: 50, tone: 'l' }) },
+  boulder: { he: 'Boulder', draw: () => ({ svg: ball('#d6d6d6', '#8c8c8c', '#3f3f3f', 46), box: BALL(46), tone: 'l' }) },
   tote15: {
     he: 'Tote',
     draw: () => ({
-      svg: S('<polygon points="18,34 82,34 76,88 24,88" fill="#8a8981"/><rect x="13" y="24" width="74" height="12" rx="2" fill="#9d9c95"/><line x1="30" y1="38" x2="32" y2="86" stroke="rgba(0,0,0,.2)"/><line x1="70" y1="38" x2="68" y2="86" stroke="rgba(0,0,0,.2)"/>'),
-      x: 50, y: 62, tone: 'l',
+      svg: S('<polygon points="8,28 92,28 84,94 16,94" fill="#8a8981"/><rect x="3" y="16" width="94" height="14" rx="2" fill="#9d9c95"/><line x1="22" y1="32" x2="25" y2="92" stroke="rgba(0,0,0,.2)"/><line x1="78" y1="32" x2="75" y2="92" stroke="rgba(0,0,0,.2)"/>'),
+      box: box(50, 61, 60, 52), tone: 'l',
     }),
   },
   bin: {
     he: 'Recycling Container',
     draw: () => ({
       svg: S(
-        '<rect x="26" y="12" width="48" height="80" rx="6" fill="url(#binG)"/><ellipse cx="50" cy="13" rx="24" ry="6" fill="#145a25"/>',
+        '<rect x="18" y="8" width="64" height="88" rx="7" fill="url(#binG)"/><ellipse cx="50" cy="9" rx="32" ry="7" fill="#145a25"/>',
         '<linearGradient id="binG" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#1f6e30"/><stop offset=".4" stop-color="#3fae55"/><stop offset="1" stop-color="#1b5e2a"/></linearGradient>',
       ),
-      x: 50, y: 54, tone: 'l', maxW: 44,
+      box: box(50, 55, 54, 70), tone: 'l',
     }),
   },
-  bigR: { he: 'כדור אדום', draw: () => ({ svg: ball('#ffb3b3', '#d92b2b', '#6e0d0d', 47), x: 50, y: 50, tone: 'l' }) },
-  bigB: { he: 'כדור כחול', draw: () => ({ svg: ball('#b3ccff', '#2b5fd9', '#0c2470', 47), x: 50, y: 50, tone: 'l' }) },
+  bigR: { he: 'כדור אדום', draw: () => ({ svg: ball('#ffb3b3', '#d92b2b', '#6e0d0d', 48), box: BALL(48), tone: 'l' }) },
+  bigB: { he: 'כדור כחול', draw: () => ({ svg: ball('#b3ccff', '#2b5fd9', '#0c2470', 48), box: BALL(48), tone: 'l' }) },
   frisbee: {
     he: 'Frisbee',
     draw: () => ({
-      svg: S('<ellipse cx="50" cy="58" rx="46" ry="17" fill="#a9aeb6"/><ellipse cx="50" cy="53" rx="45" ry="16" fill="#f4f5f7" stroke="#c3c7cd"/><ellipse cx="50" cy="53" rx="30" ry="10" fill="none" stroke="#d0d4da"/>'),
-      x: 50, y: 53, tone: 'd',
+      svg: S('<ellipse cx="50" cy="57" rx="47" ry="32" fill="#a9aeb6"/><ellipse cx="50" cy="51" rx="46" ry="31" fill="#f4f5f7" stroke="#c3c7cd"/><ellipse cx="50" cy="51" rx="34" ry="22" fill="none" stroke="#d6dae0"/>'),
+      box: box(50, 51, 60, 38), tone: 'd',
     }),
   },
   bball: {
     he: 'כדורסל',
-    draw: () => ({ svg: ball('#ffc08a', '#e8641c', '#7a2a00', 41, bballSeams, true), x: 40, y: 64, tone: 'd', maxW: 48 }),
+    draw: () => ({ svg: ball('#ffc08a', '#e8641c', '#7a2a00', 45, bballSeams, true), box: box(50, 58, 52, 54), tone: 'd' }),
   },
 }
 

@@ -1,9 +1,74 @@
+import { useLayoutEffect, useRef } from 'react'
 import { drawPiece } from '../lib/seasons.js'
 
 const imgOf = (n) => n.imageData || n.imageUrl || null
 const modeOf = (n) => (imgOf(n) ? n.labelMode || 'both' : 'txt')
 const textOf = (n) => (n.labelText ?? '').trim() || n.title
-const longWord = (t) => Math.max(0, ...t.split(/\s+/).map((w) => w.length))
+
+// ---------------------------------------------------------------- FitLabel
+// Image and/or text centred in a fixed box. The text is shrunk (and, as a last
+// resort, broken inside words) until everything fits fully inside the box.
+// Wide boxes put the image beside the text; tall boxes stack them.
+export function FitLabel({ node, tone = 'l', style, max = 15, min = 8 }) {
+  const ref = useRef()
+  const img = imgOf(node)
+  const mode = modeOf(node)
+  const text = textOf(node)
+
+  useLayoutEffect(() => {
+    const box = ref.current
+    if (!box) return
+    const fit = () => {
+      const W = box.clientWidth
+      const H = box.clientHeight
+      if (!W || !H) return
+      const inner = box.firstChild
+      const im = inner.querySelector('img')
+      const tx = inner.querySelector('.ft')
+      const row = mode === 'both' && W / H > 1.45
+      inner.classList.toggle('row', row)
+      let imgSize = 0
+      if (im) {
+        imgSize = mode === 'img' ? Math.min(W, H) * 0.92 : row ? Math.min(H * 0.92, W * 0.36) : Math.min(H * 0.5, W * 0.62)
+        im.style.width = im.style.height = `${Math.floor(imgSize)}px`
+      }
+      if (!tx) return
+      const fits = () => inner.offsetHeight <= H + 0.5 && inner.offsetWidth <= W + 0.5 && tx.scrollWidth <= tx.clientWidth + 0.5
+      const shrinkText = () => {
+        for (let fs = max; fs >= min; fs -= 0.5) {
+          tx.style.fontSize = `${fs}px`
+          if (fits()) return true
+        }
+        return false
+      }
+      tx.classList.remove('clamp')
+      tx.style.overflowWrap = 'normal'
+      if (shrinkText()) return
+      tx.style.overflowWrap = 'anywhere' // a single very long word
+      if (shrinkText()) return
+      while (im && imgSize > 14) { // give the text more room
+        imgSize *= 0.85
+        im.style.width = im.style.height = `${Math.floor(imgSize)}px`
+        if (fits()) return
+      }
+      tx.classList.add('clamp') // last resort: cut with an ellipsis
+    }
+    fit()
+    document.fonts?.ready.then(fit)
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(fit) : null
+    ro?.observe(box)
+    return () => ro?.disconnect()
+  }, [img, mode, text, max, min])
+
+  return (
+    <div ref={ref} className={`fitbox ${tone === 'd' ? 'd' : 'l'}`} style={style}>
+      <div className="fi">
+        {mode !== 'txt' && <img src={img} alt="" draggable="false" />}
+        {mode !== 'img' && <span className="ft">{text}</span>}
+      </div>
+    </div>
+  )
+}
 
 // ---------------------------------------------------------------- Tote (hub)
 function LidTop({ hole }) {
@@ -21,23 +86,23 @@ function LidTop({ hole }) {
   )
 }
 
-export function Tote({ node, season }) {
-  const img = imgOf(node)
-  const mode = modeOf(node)
+export function Tote({ node, season, peek }) {
   return (
     <div className="tote">
       <div className="fc bt" />
       <div className="fc bk" />
+      {peek?.length > 0 && (
+        <div className="peek" aria-hidden="true">
+          {peek.map((svg, i) => <div key={i} className="pk" style={{ '--i': i, '--up': `${peek.length === 3 && i === 1 ? -104 : -94}px` }} dangerouslySetInnerHTML={{ __html: svg }} />)}
+        </div>
+      )}
       <div className="fc lf"><div className="hd" /></div>
       <div className="fc rt"><div className="hd" /></div>
       <div className="fc fr">
         <div className="tab" style={{ left: 26 }} />
         <div className="tab" style={{ left: 101 }} />
-        <div className="pr">
-          {mode !== 'txt' && <img className={mode === 'img' ? 'big' : ''} src={img} alt="" draggable="false" />}
-          {mode !== 'img' && <span className="pr-t">{textOf(node)}</span>}
-          {season && <small>{season.label || season.year}</small>}
-        </div>
+        <FitLabel node={node} tone="l" max={14} min={7} style={{ left: 18, top: 19, width: 104, height: 44 }} />
+        {season && <small className="tote-yr">{season.label || season.year}</small>}
       </div>
       <div className="fl fb">
         <div className="face"><LidTop hole={30} /></div>
@@ -54,33 +119,27 @@ export function Tote({ node, season }) {
 // ---------------------------------------------------------------- Piece (link inside a hub)
 export function Piece({ node, pieceKey }) {
   const p = drawPiece(pieceKey)
-  const img = imgOf(node)
-  const mode = modeOf(node)
+  const b = p.box
   return (
     <>
       <div className="piece-svg" dangerouslySetInnerHTML={{ __html: p.svg }} />
-      <div
-        className={`lab ${p.tone === 'd' ? 'd' : 'l'} m-${mode} ${longWord(textOf(node)) > 9 ? 'long' : ''}`}
-        style={{ left: `${p.x}%`, top: `${p.y}%`, maxWidth: p.maxW || 70 }}
-      >
-        {mode !== 'txt' && <img src={img} alt="" draggable="false" />}
-        {mode !== 'img' && <span>{textOf(node)}</span>}
-      </div>
+      <FitLabel
+        node={node}
+        tone={p.tone}
+        style={{ left: `${b.x - b.w / 2}%`, top: `${b.y - b.h / 2}%`, width: `${b.w}%`, height: `${b.h}%` }}
+      />
     </>
   )
 }
 
 // ---------------------------------------------------------------- Cube (link on the home page)
 export function Cube({ node }) {
-  const img = imgOf(node)
-  const mode = modeOf(node)
   return (
     <div className="cube">
       <div className="cf c2" />
       <div className="cf c3" />
       <div className="cf c1">
-        {mode !== 'txt' && <img className={mode === 'img' ? 'big' : ''} src={img} alt="" draggable="false" />}
-        {mode !== 'img' && <span>{textOf(node)}</span>}
+        <FitLabel node={node} tone="l" max={14} min={7} style={{ inset: '9%' }} />
       </div>
     </div>
   )

@@ -34,11 +34,26 @@ export default function App() {
   const urlCache = useRef(new Map())
   const toastTimer = useRef()
 
-  const toast = useCallback((m) => {
+  const toast = useCallback((m, ms = 1800) => {
     setToastMsg(m)
     clearTimeout(toastTimer.current)
-    toastTimer.current = setTimeout(() => setToastMsg(''), 1800)
+    toastTimer.current = setTimeout(() => setToastMsg(''), ms)
   }, [])
+
+  const signIn = () =>
+    Promise.resolve(store?.signIn()).catch((e) => {
+      const code = e?.code || ''
+      console.error('Sign-in failed:', e)
+      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return
+      const msg = {
+        'auth/unauthorized-domain': `הדומיין ${location.hostname} לא מאושר ב-Firebase (Authentication → Settings → Authorized domains)`,
+        'auth/operation-not-allowed': 'כניסה עם Google לא מופעלת ב-Firebase (Authentication → Sign-in method)',
+        'auth/popup-blocked': 'הדפדפן חסם את חלון הכניסה. אפשרו חלונות קופצים לאתר ונסו שוב.',
+        'auth/network-request-failed': 'בעיית רשת. נסו שוב.',
+        'auth/invalid-api-key': 'מפתח ה-API של Firebase שגוי (בדקו את ה-secrets)',
+      }[code]
+      toast(msg || `הכניסה נכשלה: ${code || e?.message || 'שגיאה לא ידועה'}`, 9000)
+    })
 
   // ---- data
   useEffect(() => {
@@ -213,7 +228,7 @@ export default function App() {
           </button>
         ) : (
           !isDemo && (
-            <button type="button" className="ctl accent" onClick={() => store?.signIn().catch(() => {})}>
+            <button type="button" className="ctl accent" onClick={() => signIn()}>
               <i className="ti ti-brand-google" aria-hidden="true" /> כניסה
             </button>
           )
@@ -256,7 +271,7 @@ export default function App() {
               ) : (
                 <>
                   <p>צריך להתחבר כדי לפתוח את הארגז הזה.</p>
-                  <button type="button" className="btn primary" onClick={() => store.signIn().catch(() => {})}>
+                  <button type="button" className="btn primary" onClick={() => signIn()}>
                     <i className="ti ti-brand-google" aria-hidden="true" /> {isDemo ? 'כניסה (דמו: מנטור)' : 'כניסה עם Google'}
                   </button>
                 </>
@@ -274,6 +289,7 @@ export default function App() {
               onActivate={activate}
               onEdit={(node) => setDrawer({ node })}
               onAdd={() => setDrawer({ parentId: hub ? hub.id : null })}
+              kidsOf={(id) => childrenOf(nodes, id)}
             />
           )}
         </div>
@@ -302,7 +318,7 @@ export default function App() {
             ) : (
               <>
                 <p>צריך להתחבר כדי לפתוח את זה.</p>
-                <button type="button" className="btn primary" onClick={() => { setGate(null); store.signIn().catch(() => {}) }}>
+                <button type="button" className="btn primary" onClick={() => { setGate(null); signIn() }}>
                   <i className="ti ti-brand-google" aria-hidden="true" /> {isDemo ? 'כניסה (דמו: מנטור)' : 'כניסה עם Google'}
                 </button>
               </>

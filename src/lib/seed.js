@@ -36,10 +36,10 @@ export function seedDemo() {
   // Build
   ;[['רישיון בנאי', 'רישיון'], ['שרטוטים', 'שרטוטים']].forEach(([t, l], i) =>
     add({ id: `b${i}`, parentId: 'build', type: 'link', title: t, labelText: l, scope: 'build', effVis: 'public' }, 'https://example.com/b' + i))
-  add({ id: 'cnc', slug: 'cnc', parentId: 'build', type: 'hub', title: 'CNC', season: 2023, scope: 'build', effVis: 'public' })
+  add({ id: 'cnc', slug: 'cnc', parentId: 'build', type: 'hub', title: 'CNC', season: 2023, visibility: 'members', scope: 'build', effVis: 'members' })
   add({ id: 'b-shop', parentId: 'build', type: 'link', title: 'רשימת קניות', labelText: 'קניות', visibility: 'members', scope: 'build', effVis: 'members' }, 'https://example.com/shop')
   add({ id: 'b-safety', parentId: 'build', type: 'link', title: 'הדרכת בטיחות', labelText: 'בטיחות', scope: 'build', effVis: 'public' }, 'https://example.com/safety')
   ;[['הוראות הפעלה', 'הוראות'], ['קבצי G-code', 'G-code'], ['תור עבודות', 'תור']].forEach(([t, l], i) =>
-    add({ id: `c${i}`, parentId: 'cnc', type: 'link', title: t, labelText: l, scope: 'build', effVis: 'public' }, 'https://example.com/c' + i))
+    add({ id: `c${i}`, parentId: 'cnc', type: 'link', title: t, labelText: l, scope: 'build', effVis: 'members' }, 'https://example.com/c' + i))
   return { nodes, urls }
 }
