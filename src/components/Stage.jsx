@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Tote, Piece, Cube } from './Items.jsx'
 import { seasonOf } from '../lib/seasons.js'
-import { canView, canEditScope } from '../lib/model.js'
+import { canView, canEditNode, canAddToHome } from '../lib/model.js'
 
 // Pieces that rise out of an opened tote: all of its children, drawn as the
 // tote's season pieces (links) or little totes (sub-hubs).
@@ -22,11 +22,11 @@ function peekFor(hubNode, kids) {
 // Active + allowed  → lid opens and a few of its contents peek out.
 // Active + no access → the item stays shut and shakes "no".
 // Tapping/clicking anywhere else, or the mouse leaving, closes it again.
-export default function Stage({ hub, items, profile, editMode, onActivate, onEdit, onAdd, kidsOf }) {
+export default function Stage({ hub, items, nodes, profile, editMode, onActivate, onEdit, onAdd, kidsOf }) {
   const [active, setActive] = useState(null)
   const pointer = useRef('mouse')
   const season = hub ? seasonOf(hub.season) : null
-  const canAddHere = editMode && (hub ? canEditScope(profile, hub.scope) : profile?.role === 'mentor')
+  const canAddHere = editMode && (hub ? canEditNode(profile, hub) : canAddToHome(profile))
 
   useEffect(() => {
     if (!active) return
@@ -54,7 +54,7 @@ export default function Stage({ hub, items, profile, editMode, onActivate, onEdi
       {items.map((item, i) => {
         const locked = item.effVis !== 'public'
         const allowed = canView(profile, item.effVis)
-        const editable = editMode && canEditScope(profile, item.scope)
+        const editable = editMode && canEditNode(profile, item)
         const peek = item.type === 'hub' && allowed ? peekFor(item, kidsOf(item.id)) : null
         let body
         if (item.type === 'hub') {

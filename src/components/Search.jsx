@@ -2,17 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { ancestors, canView } from '../lib/model.js'
 import { drawPiece, seasonOf } from '../lib/seasons.js'
 import { imgSrcProps } from '../lib/links.js'
-
-// Hebrew-friendly normalisation: lower-case, strip niqqud/punctuation, fold final letters.
-const FINALS = { 'ך': 'כ', 'ם': 'מ', 'ן': 'נ', 'ף': 'פ', 'ץ': 'צ' }
-const norm = (s) =>
-  (s || '')
-    .toLowerCase()
-    .normalize('NFKD')
-    .replace(/[֑-ׇ]/g, '')
-    .replace(/[ךםןףץ]/g, (c) => FINALS[c])
-    .replace(/[^\p{L}\p{N}]+/gu, ' ')
-    .trim()
+import { norm } from '../lib/text.js'
 
 const MAX_RESULTS = 12
 

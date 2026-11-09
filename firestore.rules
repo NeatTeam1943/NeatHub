@@ -1,9 +1,11 @@
 rules_version = '2';
 
 // NEATHUB security rules.
-//  - nodes:    public read (titles, labels, season). Writes only by editors of the node's scope.
+//  - nodes:    public read (titles, labels, season). Writes only by editors of the node (see canEdit).
 //  - nodeUrls: the actual links. Read gated by effective visibility, so locked URLs never reach guests.
-//  - users:    each user creates their own doc as 'pending'; only mentors change roles/scopes.
+//              Writes follow the node's edit permissions, and visibility must match the node's effVis.
+//  - users:    each user creates their own doc as 'pending'; only mentors change roles/scopes
+//              (except a lead's automatic permission for a tote they just created).
 // Season, visibility, order, labels… are all node fields, so only editors can change them.
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -14,8 +16,24 @@ service cloud.firestore {
     }
     function me() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
     function isMentor() { return hasProfile() && me().role == 'mentor'; }
-    function canEditScope(scope) {
-      return isMentor() || (hasProfile() && me().role == 'lead' && scope in me().scopes);
+    function isLead() { return hasProfile() && me().role == 'lead'; }
+    function myId() { return request.auth.uid; }
+    function nodePath(nid) { return /databases/$(database)/documents/nodes/$(nid); }
+    function ownerOf(d) { return d.get('createdBy', null); }
+
+    // Who may edit a node — mirrors canEditNode() in src/lib/model.js.
+    // Mentors: everything. Team leads: what a mentor granted them in users/{uid}.scopes —
+    // a top-level tote id (that tote + everything inside), or 'root' (the home page).
+    function leadHas(s) { return isLead() && s in me().get('scopes', []); }
+    function canEdit(d) { return isMentor() || leadHas(d.scope); }
+    // scope must really be the top-level tote above the node (so nobody can
+    // slip an item into someone else's tote by claiming their own scope).
+    function placementOk(d, docId) {
+      return d.parentId == null
+        ? ((d.type == 'hub' && d.scope == docId) || (d.type == 'link' && d.scope == 'root'))
+        : (existsAfter(nodePath(d.parentId))
+           && getAfter(nodePath(d.parentId)).data.type == 'hub'
+           && getAfter(nodePath(d.parentId)).data.scope == d.scope);
     }
     function canSee(vis) {
       return vis == 'public'
@@ -40,29 +58,57 @@ service cloud.firestore {
 
     match /nodes/{id} {
       allow read: if true;
-      // Top-level items (parentId == null) can only be created by mentors.
-      allow create: if canEditScope(request.resource.data.scope)
+      // New items record who added them. Leads with the home-page permission may put new
+      // totes on the home page (they get that tote's permission in the same batch).
+      allow create: if (canEdit(request.resource.data)
+                        || (request.resource.data.parentId == null && leadHas('root')))
                     && validNode(request.resource.data)
-                    && (request.resource.data.parentId != null || isMentor());
-      // Leads can't move items out of their scope; mentors can.
-      allow update: if canEditScope(resource.data.scope)
+                    && ownerOf(request.resource.data) == myId()
+                    && (isMentor() || placementOk(request.resource.data, id));
+      // Must be allowed to edit it both where it was and where it ends up.
+      allow update: if canEdit(resource.data)
+                    && canEdit(request.resource.data)
                     && validNode(request.resource.data)
-                    && (isMentor() || (request.resource.data.scope == resource.data.scope
-                                       && (request.resource.data.parentId == resource.data.parentId
-                                           || request.resource.data.parentId != null)));
-      // Leads can't delete a whole top-level tote.
-      allow delete: if isMentor() || (canEditScope(resource.data.scope) && resource.data.parentId != null);
+                    && (isMentor() || ownerOf(request.resource.data) == ownerOf(resource.data))
+                    && ((request.resource.data.parentId == resource.data.parentId
+                         && request.resource.data.scope == resource.data.scope)
+                        || isMentor() || placementOk(request.resource.data, id));
+      // Removing something from the home page also needs the home-page permission.
+      allow delete: if canEdit(resource.data)
+                    && (isMentor() || resource.data.parentId != null || leadHas('root'));
     }
 
+    // URL docs follow the permissions of their node.
     match /nodeUrls/{id} {
-      allow read: if canSee(resource.data.visibility) || canEditScope(resource.data.scope);
-      allow create, update: if canEditScope(request.resource.data.scope)
-                            && (resource == null || canEditScope(resource.data.scope))
-                            && request.resource.data.url is string
+      allow read: if canSee(resource.data.visibility)
+                  || (exists(nodePath(id)) && canEdit(get(nodePath(id)).data));
+      allow create, update: if request.resource.data.url is string
                             && request.resource.data.url.matches('https?://.+')
                             && request.resource.data.url.size() < 2000
-                            && visValue(request.resource.data.visibility);
-      allow delete: if canEditScope(resource.data.scope);
+                            && visValue(request.resource.data.visibility)
+                            && (isMentor()
+                                || (existsAfter(nodePath(id))
+                                    && canEdit(getAfter(nodePath(id)).data)
+                                    && request.resource.data.visibility == getAfter(nodePath(id)).data.effVis));
+      allow delete: if isMentor() || (exists(nodePath(id)) && canEdit(get(nodePath(id)).data));
+    }
+
+    // A lead with the home-page permission who creates a brand-new top-level tote may
+    // append exactly that tote's id to their own scopes (same batch as the create).
+    function selfGrantNewTote(userId) {
+      let old = resource.data.get('scopes', []);
+      let nw = request.resource.data.get('scopes', []);
+      let added = nw[nw.size() - 1];
+      return request.auth.uid == userId && isLead() && 'root' in old
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['scopes'])
+        && nw.size() == old.size() + 1
+        && nw == old.concat([added])
+        && added is string
+        && !exists(nodePath(added))
+        && existsAfter(nodePath(added))
+        && getAfter(nodePath(added)).data.parentId == null
+        && getAfter(nodePath(added)).data.type == 'hub'
+        && ownerOf(getAfter(nodePath(added)).data) == myId();
     }
 
     match /users/{uid} {
@@ -70,7 +116,8 @@ service cloud.firestore {
       allow create: if signedIn() && request.auth.uid == uid
                     && request.resource.data.role == 'pending'
                     && request.resource.data.scopes.size() == 0;
-      allow update, delete: if isMentor();
+      allow update: if isMentor() || selfGrantNewTote(uid);
+      allow delete: if isMentor();
     }
   }
 }

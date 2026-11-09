@@ -32,12 +32,16 @@ GitHub → **Settings → Pages → Source: GitHub Actions**. Add the four `VITE
 |---|---|
 | guest / pending | browse; open public links |
 | member | + open "members" links |
-| lead | + edit everything inside the top-level totes a mentor assigned them (items, labels, **season**, order). Can't create or delete top-level totes. |
+| lead | + only what a mentor grants on `#/admin`: a top-level tote (edit it and everything inside — items, labels, **season**, order) and/or **Home page** (add items to the home page, edit its links, remove items from it). A new tote a lead puts on the home page is granted to them automatically; a mentor can untick it. |
 | mentor | everything, including users and roles |
 
 Each item's visibility is `public / members / leads / mentors`. A tote's visibility also applies to everything inside it (`effVis`). URLs live in a separate `nodeUrls` collection, so a locked link's URL never reaches a guest's browser. Titles stay visible (shown with a lock).
 
 The hub only hides links. Files in Drive keep their own sharing settings — a Drive file shared "anyone with the link" is still open to anyone who gets the link elsewhere.
+
+## Install as an app
+
+NEATHUB is a PWA: `public/manifest.webmanifest` + `public/sw.js` (registered in production builds). On Android/Chrome use the menu → **Install app**; on iPhone, Share → **Add to Home Screen**. The service worker serves the newest version when online and the last loaded version offline. Icons live in `public/icons/` (regular + maskable 192/512, apple-touch-icon 180). When you change `sw.js`, bump `CACHE` so old caches are dropped.
 
 ## Shareable links
 
@@ -45,9 +49,9 @@ Every hub has its own address built from slugs, e.g. `https://<owner>.github.io/
 
 ## Data model
 
-- `nodes/{id}` — public: `parentId`, `type` (`hub`/`link`), `title`, `labelMode` (`txt`/`img`/`both`), `labelText`, `imageData` / `imageUrl`, `season` and `slug` (hubs), `piece` (link piece override), `visibility`, `effVis`, `scope` (top-level tote id, or `root`), `order`.
-- `nodeUrls/{id}` — `url`, `visibility` (= effVis), `scope`.
-- `users/{uid}` — `name`, `email`, `photo`, `role` (`pending`/`member`/`lead`/`mentor`), `scopes` (top-level tote ids a lead may edit).
+- `nodes/{id}` — public: `parentId`, `type` (`hub`/`link`), `title`, `labelMode` (`txt`/`img`/`both`), `labelText`, `imageData` / `imageUrl`, `season` and `slug` (hubs), `piece` (link piece override), `visibility`, `effVis`, `scope` (top-level tote id, or `root`), `order`, `createdBy` (uid of whoever added it; informational).
+- `nodeUrls/{id}` — `url`, `visibility` (= effVis), `scope`. Writable by whoever may edit the node.
+- `users/{uid}` — `name`, `email`, `photo`, `role` (`pending`/`member`/`lead`/`mentor`), `scopes` (top-level tote ids a lead may edit, plus `root` = the home page). Mentors manage these on `#/admin` (search, filter by role / tote, sort).
 
 ## Rules tests
 

@@ -1,0 +1,21 @@
+{
+  "name": "NEATHUB · Neat Team 1943",
+  "short_name": "NEATHUB",
+  "description": "מפה לקישורים השימושיים ביותר של כל צוות וקבוצה ב-Neat Team 1943",
+  "lang": "he",
+  "dir": "rtl",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0a0f3d",
+  "theme_color": "#0a0f3d",
+  "categories": ["education", "productivity"],
+  "icons": [
+    { "src": "icons/icon-any-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-any-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

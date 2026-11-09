@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { SEASONS, PIECES, seasonOf, seasonLabel, DEFAULT_SEASON } from '../lib/seasons.js'
-import { VIS_LABEL, VIS_RANK, childrenOf, descendants, canEditScope, recomputeSubtree, newId, ancestors, slugify, hubPath, SLUG_RE, RESERVED_SLUGS } from '../lib/model.js'
+import { VIS_LABEL, VIS_RANK, childrenOf, descendants, canEditNode, canAddToHome, canDeleteNode, recomputeSubtree, newId, ancestors, slugify, hubPath, SLUG_RE, RESERVED_SLUGS } from '../lib/model.js'
 import { detectLink, findSiteIcon, isValidUrl, resizeImage } from '../lib/links.js'
 import { Tote, Piece, Cube } from './Items.jsx'
 
@@ -13,6 +13,7 @@ export default function Drawer({ node, parentId, nodes, profile, store, onClose,
       : {
           id: newId(), parentId, type: 'link', title: '', labelMode: 'txt', labelText: '',
           imageData: null, imageUrl: null, season: DEFAULT_SEASON, piece: null, visibility: 'public',
+          createdBy: profile?.uid || null,
         },
   )
   const [url, setUrl] = useState('')
@@ -38,7 +39,7 @@ export default function Drawer({ node, parentId, nodes, profile, store, onClose,
   const targets = useMemo(() => {
     const banned = new Set([d.id, ...descendants(nodes, d.id).map((n) => n.id)])
     return nodes
-      .filter((n) => n.type === 'hub' && !banned.has(n.id) && canEditScope(profile, n.scope))
+      .filter((n) => n.type === 'hub' && !banned.has(n.id) && canEditNode(profile, n))
       .map((n) => ({ id: n.id, path: ancestors(nodes, n.id).map((a) => a.title).join(' › ') }))
       .sort((a, b) => a.path.localeCompare(b.path))
   }, [nodes, d.id, profile])
@@ -95,7 +96,9 @@ export default function Drawer({ node, parentId, nodes, profile, store, onClose,
     const urls = d.type === 'link' && (isNew || url !== origUrl) ? { [d.id]: url.trim() } : {}
     setBusy(true)
     try {
-      await store.saveNodes(changed, urls)
+      // A lead who puts a new tote on the home page gets permission to fill it.
+      const grant = isNew && d.type === 'hub' && !clean.parentId && profile?.role === 'lead' ? clean.id : null
+      await store.saveNodes(changed, urls, grant)
       toast(isNew ? 'נוסף' : 'נשמר')
       onClose()
     } catch (e) {
@@ -258,10 +261,10 @@ export default function Drawer({ node, parentId, nodes, profile, store, onClose,
           {d.type === 'hub' && <span className="hint">חל גם על כל מה שבתוך הארגז.</span>}
         </label>
 
-        {(profile?.role === 'mentor' || d.parentId) && <label className="field">
+        {(canAddToHome(profile) || d.parentId) && <label className="field">
           <span className="lbl">נמצא בתוך</span>
           <select value={d.parentId ?? ''} onChange={(e) => set({ parentId: e.target.value || null })}>
-            {profile?.role === 'mentor' && <option value="">דף הבית</option>}
+            {(profile?.role === 'mentor' || (canAddToHome(profile) && (isNew || d.type === 'link'))) && <option value="">דף הבית</option>}
             {targets.map((t) => <option key={t.id} value={t.id}>{t.path}</option>)}
           </select>
         </label>}
@@ -280,7 +283,7 @@ export default function Drawer({ node, parentId, nodes, profile, store, onClose,
 
         <footer>
           <button type="button" className="btn primary" disabled={busy} onClick={save}>{isNew ? 'הוספה' : 'שמירה'}</button>
-          {!isNew && (profile?.role === 'mentor' || node.parentId) && <button type="button" className="btn danger" disabled={busy} onClick={remove}><i className="ti ti-trash" aria-hidden="true" /> מחיקה</button>}
+          {!isNew && canDeleteNode(profile, node) && <button type="button" className="btn danger" disabled={busy} onClick={remove}><i className="ti ti-trash" aria-hidden="true" /> מחיקה</button>}
         </footer>
       </aside>
     </div>

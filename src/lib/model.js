@@ -15,6 +15,7 @@
 //   effVis       same values        effective = strictest of node + ancestors
 //   scope        string             top-level hub id (edit permission unit), 'root' for home links
 //   order        number
+//   createdBy    uid of whoever added it (informational)
 //
 // The URL itself lives in `nodeUrls/{id}` = { url, visibility: effVis, scope }
 // so locked links never reach a guest's browser.
@@ -59,14 +60,31 @@ export function canView(profile, vis) {
   return (VIS_RANK[vis] ?? 0) <= (ROLE_RANK[profile?.role] ?? 0)
 }
 
-export function canEditScope(profile, scope) {
-  if (!profile) return false
+// Permissions are granted by mentors on the users page (profile.scopes):
+//  - a top-level tote's id  → edit that tote and everything inside it (incl. its season)
+//  - HOME ('root')          → add items to the home page, edit/delete the links on it,
+//                             and delete totes from it (if that tote is granted too)
+// Mentors can do everything. A lead who creates a new tote on the home page gets that
+// tote added to their scopes automatically (a mentor can take it away).
+// Mirrors firestore.rules.
+export const HOME = 'root'
+const has = (profile, scope) => (profile?.scopes || []).includes(scope)
+
+export function canEditNode(profile, node) {
+  if (!profile || !node) return false
   if (profile.role === 'mentor') return true
-  return profile.role === 'lead' && (profile.scopes || []).includes(scope)
+  return profile.role === 'lead' && has(profile, node.scope)
 }
 
-export function canEditAnything(profile) {
-  return profile?.role === 'mentor' || (profile?.role === 'lead' && (profile.scopes || []).length > 0)
+export const canAddToHome = (profile) => profile?.role === 'mentor' || (profile?.role === 'lead' && has(profile, HOME))
+
+// Shows the edit toggle at all.
+export const canEditAnything = (profile) => profile?.role === 'mentor' || (profile?.role === 'lead' && (profile.scopes || []).length > 0)
+
+// Removing something from the home page needs the home-page permission too.
+export function canDeleteNode(profile, node) {
+  if (!canEditNode(profile, node)) return false
+  return profile.role === 'mentor' || !!node.parentId || has(profile, HOME)
 }
 
 // Recompute scope + effVis for a node and its whole subtree after a change.

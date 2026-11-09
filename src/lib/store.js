@@ -12,6 +12,7 @@ const cfg = {
 export const isDemo = !cfg.projectId
 
 const strip = ({ id, ...rest }) => rest
+const chunks = (arr, n) => Array.from({ length: Math.ceil(arr.length / n) }, (_, i) => arr.slice(i * n, i * n + n))
 
 // ---------------------------------------------------------------- Firebase
 async function firebaseStore() {
@@ -59,25 +60,36 @@ async function firebaseStore() {
       return s.exists() ? s.data().url : null
     },
     // nodes: full node objects to write. urls: { [id]: url } for links whose URL changed.
-    async saveNodes(nodes, urls = {}) {
-      const b = fs.writeBatch(db)
-      for (const n of nodes) {
-        b.set(fs.doc(db, 'nodes', n.id), { ...strip(n), updatedAt: fs.serverTimestamp() })
-        if (n.type === 'link') {
-          const data = { visibility: n.effVis, scope: n.scope }
-          if (urls[n.id] !== undefined) data.url = urls[n.id]
-          b.set(fs.doc(db, 'nodeUrls', n.id), data, { merge: true })
+    // Written in small batches: security rules may read only ~20 documents per batch.
+    // grantScope: id of a new top-level tote a team lead just created — added to their
+    // own scopes in the same batch (the rules only allow it for a brand-new tote).
+    async saveNodes(nodes, urls = {}, grantScope = null) {
+      for (const [i, part] of chunks(nodes, 6).entries()) {
+        const b = fs.writeBatch(db)
+        if (i === 0 && grantScope && auth.currentUser) {
+          b.update(fs.doc(db, 'users', auth.currentUser.uid), { scopes: fs.arrayUnion(grantScope) })
         }
+        for (const n of part) {
+          b.set(fs.doc(db, 'nodes', n.id), { ...strip(n), updatedAt: fs.serverTimestamp() })
+          if (n.type === 'link') {
+            const data = { visibility: n.effVis, scope: n.scope }
+            if (urls[n.id] !== undefined) data.url = urls[n.id]
+            b.set(fs.doc(db, 'nodeUrls', n.id), data, { merge: true })
+          }
+        }
+        await b.commit()
       }
-      await b.commit()
     },
+    // Deepest items first, so a tote is removed only after everything inside it.
     async deleteNodes(nodes) {
-      const b = fs.writeBatch(db)
-      for (const n of nodes) {
-        b.delete(fs.doc(db, 'nodes', n.id))
-        if (n.type === 'link') b.delete(fs.doc(db, 'nodeUrls', n.id))
+      for (const part of chunks([...nodes].reverse(), 6)) {
+        const b = fs.writeBatch(db)
+        for (const n of part) {
+          b.delete(fs.doc(db, 'nodes', n.id))
+          if (n.type === 'link') b.delete(fs.doc(db, 'nodeUrls', n.id))
+        }
+        await b.commit()
       }
-      await b.commit()
     },
     onUsers(cb, onError) {
       return fs.onSnapshot(
@@ -99,6 +111,7 @@ function demoStore() {
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)) } catch { /* private mode */ } }
   const nodeSubs = new Set()
   const authSubs = new Set()
+  const userSubs = new Set()
   const emitNodes = () => nodeSubs.forEach((cb) => cb(state.nodes.map((n) => ({ ...n }))))
   const profile = () =>
     state.role === 'guest'
@@ -116,7 +129,7 @@ function demoStore() {
     signOut() { state.role = 'guest'; save(); emitAuth() },
     setDemoRole(role) {
       state.role = role
-      if (role === 'lead') state.leadScopes = state.nodes.filter((n) => !n.parentId && n.type === 'hub').slice(0, 1).map((n) => n.id)
+      if (role === 'lead') state.leadScopes = ['root', ...state.nodes.filter((n) => !n.parentId && n.type === 'hub').slice(0, 1).map((n) => n.id)]
       save(); emitAuth()
     },
     async getUrl(id) {
@@ -126,7 +139,8 @@ function demoStore() {
       if (rank[u.visibility] > r) throw Object.assign(new Error('denied'), { code: 'permission-denied' })
       return u.url
     },
-    async saveNodes(nodes, urls = {}) {
+    async saveNodes(nodes, urls = {}, grantScope = null) {
+      if (grantScope) { state.leadScopes = [...(state.leadScopes || []), grantScope]; emitAuth() }
       for (const n of nodes) {
         const i = state.nodes.findIndex((x) => x.id === n.id)
         if (i >= 0) state.nodes[i] = { ...n }
@@ -145,13 +159,28 @@ function demoStore() {
       save(); emitNodes()
     },
     onUsers(cb) {
-      cb([
-        { uid: 'demo', name: 'משתמש דמו', email: 'demo@neathub', role: state.role === 'guest' ? 'mentor' : state.role, scopes: [] },
-        { uid: 'u2', name: 'נועה (דוגמה)', email: 'noa@example.com', role: 'pending', scopes: [] },
-      ])
-      return () => {}
+      if (!state.users) {
+        const t = Date.now()
+        state.users = [
+          ['demo', 'משתמש דמו', 'demo@neathub', 'mentor', []],
+          ['u2', 'נועה כהן', 'noa@example.com', 'pending', []],
+          ['u3', 'איתי לוי', 'itai@example.com', 'lead', ['sw']],
+          ['u4', 'מאיה פרץ', 'maya@example.com', 'lead', ['build']],
+          ['u5', 'דניאל ברק', 'daniel@example.com', 'member', []],
+          ['u6', 'שירה אבני', 'shira@example.com', 'member', []],
+          ['u7', 'רון מזרחי', 'ron@example.com', 'mentor', []],
+          ['u8', 'יעל גולן', 'yael@example.com', 'pending', []],
+        ].map(([uid, name, email, role, scopes], i) => ({ uid, name, email, role, scopes, createdAt: t - i * 86400000 }))
+      }
+      userSubs.add(cb)
+      cb(state.users.map((u) => ({ ...u })))
+      return () => userSubs.delete(cb)
     },
-    async updateUser() {},
+    async updateUser(uid, data) {
+      state.users = state.users.map((u) => (u.uid === uid ? { ...u, ...data } : u))
+      save()
+      userSubs.forEach((cb) => cb(state.users.map((u) => ({ ...u }))))
+    },
     reset() { localStorage.removeItem(KEY); location.reload() },
   }
 }

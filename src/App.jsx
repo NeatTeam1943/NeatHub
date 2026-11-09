@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getStore, isDemo } from './lib/store.js'
-import { childrenOf, ancestors, canView, canEditScope, canEditAnything, recomputeSubtree, ROLE_LABEL, hubPath, resolvePath } from './lib/model.js'
+import { childrenOf, ancestors, canView, canEditNode, canAddToHome, canEditAnything, recomputeSubtree, ROLE_LABEL, hubPath, resolvePath } from './lib/model.js'
 import { SEASONS, seasonOf, seasonLabel } from './lib/seasons.js'
 import Stage from './components/Stage.jsx'
 import Drawer from './components/Drawer.jsx'
@@ -192,7 +192,7 @@ export default function App() {
   }
 
   const setSeason = async (year) => {
-    if (!hub || !canEditScope(profile, hub.scope)) return
+    if (!hub || !canEditNode(profile, hub)) return
     try {
       await store.saveNodes(recomputeSubtree(nodes, { ...hub, season: year }))
     } catch {
@@ -200,7 +200,7 @@ export default function App() {
     }
   }
 
-  const canEditHere = editMode && (hub ? canEditScope(profile, hub.scope) : profile?.role === 'mentor')
+  const canEditHere = editMode && (hub ? canEditNode(profile, hub) : canAddToHome(profile))
   const season = hub ? seasonOf(hub.season) : null
 
   return (
@@ -318,6 +318,7 @@ export default function App() {
             <Stage
               hub={hub}
               items={items}
+              nodes={nodes}
               profile={profile}
               editMode={editMode}
               onActivate={activate}
