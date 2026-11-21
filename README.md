@@ -43,11 +43,10 @@ cd systems/neathub        # כאן עורכים, עושים commit ו-push לר�
 
 1. ב-Supabase של NeatSystem, אחרי המיגרציות של NeatSystem: להריץ את `supabase/migrations/0001_neathub.sql`.
 2. Settings → API → Exposed schemas: להוסיף `neathub_api`.
-3. העברת הקישורים מ-Firestore:
-   1. מייצאים את `nodes` ו-`nodeUrls`. הם ציבוריים, אז מפתח ה-web מספיק.
-   2. שומרים אותם עם `neathub_api.save_nodes` כמנטור, או ב-SQL ישיר ל-`neathub.nodes` ו-`neathub.urls`. השדות זהים, ב-snake_case.
-
-אחרי ההעברה, מנטור מסמן מחדש מי עורך מה. השיוך הישן היה לפי משתמשי Firebase.
+3. העברת הקישורים מ-Firestore: ב-NeatSystem מריצים `node scripts/import-firebase.mjs`. הוא מעביר:
+   - את כל הארגזים, הקישורים והתמונות.
+   - את "מי עורך מה", לפי אותו מייל של Google.
+   - את הקישורים הנעולים, רק אם מדביקים את ה-token שהסקריפט מבקש.
 
 ## הוספת עונה
 
