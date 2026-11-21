@@ -1,3 +1,4 @@
+import Ti from './Ti.jsx'
 import { useEffect, useRef, useState } from 'react'
 import { Tote, Piece, Cube } from './Items.jsx'
 import { seasonOf } from '../lib/seasons.js'
@@ -92,10 +93,10 @@ export default function Stage({ hub, items, nodes, profile, editMode, onActivate
               {body}
               <div className={hub && item.type !== 'hub' ? 'psh' : 'sh'} />
             </button>
-            {locked && <span className="lock" title="דורש הרשאה"><i className="ti ti-lock" aria-hidden="true" /></span>}
+            {locked && <span className="lock" title="דורש הרשאה"><Ti n="lock" /></span>}
             {editable && (
               <button type="button" className="edit-btn" aria-label={`עריכת ${item.title}`} onClick={() => onEdit(item)}>
-                <i className="ti ti-pencil" aria-hidden="true" />
+                <Ti n="pencil" />
               </button>
             )}
           </div>
@@ -104,7 +105,7 @@ export default function Stage({ hub, items, nodes, profile, editMode, onActivate
       {canAddHere && (
         <div className={`item add ${hub ? 'in' : 'lvl0'}`}>
           <button type="button" className="hit add-tile" onClick={onAdd}>
-            <i className="ti ti-plus" aria-hidden="true" />
+            <Ti n="plus" />
             <span>הוספה</span>
           </button>
         </div>

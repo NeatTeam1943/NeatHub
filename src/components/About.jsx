@@ -1,10 +1,12 @@
+import Ti from './Ti.jsx'
+import { href } from '../lib/nav.js'
 // "About" dialog: what NEATHUB is and how to use it.
 export default function About({ onClose }) {
-  const base = `${location.origin}${location.pathname}`
+  const base = `${location.origin}${location.pathname}${href()}`
   return (
     <div className="scrim center" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal about" role="dialog" aria-modal="true" aria-labelledby="about-title">
-        <button type="button" className="icon-btn about-x" onClick={onClose} aria-label="סגירה"><i className="ti ti-x" /></button>
+        <button type="button" className="icon-btn about-x" onClick={onClose} aria-label="סגירה"><Ti n="x" /></button>
         <h2 id="about-title">מה זה NEATHUB?</h2>
         <p>
           NEATHUB הוא מפה לקישורים השימושיים ביותר של כל צוות וקבוצה ב-<bdi className="nowrap">Neat Team 1943</bdi>, כדי
@@ -29,7 +31,7 @@ export default function About({ onClose }) {
         <p>
           לכל ארגז יש קישור משלו, ואפשר לשלוח אותו ישירות. אם הוגדר לארגז שם קישור, הכתובת תהיה קריאה, למשל:
         </p>
-        <code className="about-url" dir="ltr">{base}#/teams/software</code>
+        <code className="about-url" dir="ltr">{base}/teams/software</code>
         <p>
           אם לא הוגדר, הכתובת תהיה רצף אותיות אקראי. לכן כדאי להגדיר שם קישור לכל ארגז שמתכננים לשתף.
         </p>

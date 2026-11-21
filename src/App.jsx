@@ -1,6 +1,8 @@
+import Ti from './components/Ti.jsx'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { getStore, isDemo } from './lib/store.js'
-import { childrenOf, ancestors, canView, canEditNode, canAddToHome, canEditAnything, recomputeSubtree, ROLE_LABEL, hubPath, resolvePath } from './lib/model.js'
+import { getStore } from './lib/store.js'
+import { BASE, currentPath, href, setBase } from './lib/nav.js'
+import { childrenOf, ancestors, canView, canEditNode, canAddToHome, canEditAnything, recomputeSubtree, hubPath, resolvePath } from './lib/model.js'
 import { SEASONS, seasonOf, seasonLabel } from './lib/seasons.js'
 import Stage from './components/Stage.jsx'
 import Drawer from './components/Drawer.jsx'
@@ -8,20 +10,21 @@ import Admin from './components/Admin.jsx'
 import Search from './components/Search.jsx'
 import About from './components/About.jsx'
 
-// Routes: #/  ·  #/admin  ·  #/software/vision (hub path by slug)  ·  #/h/<id> (old links)
+// Routes, under NeatSystem's '#/neathub': /  ·  /admin  ·  /software/vision (hub path by slug)  ·  /h/<id> (old links)
 const parseHash = () => {
-  const h = location.hash.replace(/^#\/?/, '').replace(/\/+$/, '')
+  const h = currentPath()
   if (h === 'admin') return { kind: 'admin', key: 'admin' }
   const legacy = h.match(/^h\/([^/]+)$/)
   if (legacy) return { kind: 'legacy', id: decodeURIComponent(legacy[1]), key: h }
   const segs = h ? h.split('/').map((s) => { try { return decodeURIComponent(s) } catch { return s } }) : []
   return { kind: segs.length ? 'hub' : 'home', segs, key: h }
 }
-const hrefFor = (nodes, id) => (id ? `#/${hubPath(nodes, id)}` : '#/')
+const hrefFor = (nodes, id) => (id ? href(hubPath(nodes, id)) : href())
 const reduced = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 const ANIM_MS = 360
 
-export default function App() {
+export default function App({ host }) {
+  setBase(host.base)
   const [store, setStore] = useState(null)
   const [nodes, setNodes] = useState(null)
   const [loadErr, setLoadErr] = useState('')
@@ -32,37 +35,17 @@ export default function App() {
   const [drawer, setDrawer] = useState(null) // { node } | { parentId }
   const [gate, setGate] = useState(null) // locked item the viewer can't open
   const [about, setAbout] = useState(false)
-  const [toastMsg, setToastMsg] = useState('')
   const pendingEnter = useRef(null)
   const urlCache = useRef(new Map())
-  const toastTimer = useRef()
-
-  const toast = useCallback((m, ms = 1800) => {
-    setToastMsg(m)
-    clearTimeout(toastTimer.current)
-    toastTimer.current = setTimeout(() => setToastMsg(''), ms)
-  }, [])
-
-  const signIn = () =>
-    Promise.resolve(store?.signIn()).catch((e) => {
-      const code = e?.code || ''
-      console.error('Sign-in failed:', e)
-      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return
-      const msg = {
-        'auth/unauthorized-domain': `הדומיין ${location.hostname} לא מאושר ב-Firebase (Authentication → Settings → Authorized domains)`,
-        'auth/operation-not-allowed': 'כניסה עם Google לא מופעלת ב-Firebase (Authentication → Sign-in method)',
-        'auth/popup-blocked': 'הדפדפן חסם את חלון הכניסה. אפשרו חלונות קופצים לאתר ונסו שוב.',
-        'auth/network-request-failed': 'בעיית רשת. נסו שוב.',
-        'auth/invalid-api-key': 'מפתח ה-API של Firebase שגוי (בדקו את ה-secrets)',
-      }[code]
-      toast(msg || `הכניסה נכשלה: ${code || e?.message || 'שגיאה לא ידועה'}`, 9000)
-    })
+  const appRef = useRef(null)
+  // NeatSystem's toasts, so messages look and sit like everywhere else
+  const toast = useCallback((m) => host.toast(m), [host])
 
   // ---- data
   useEffect(() => {
     let unsubs = []
     let cancelled = false
-    getStore().then((s) => {
+    getStore(host).then((s) => {
       if (cancelled) return
       setStore(s)
       unsubs.push(s.onNodes(setNodes, () => setLoadErr('לא הצלחתי לטעון את ההאב.')))
@@ -70,6 +53,8 @@ export default function App() {
     })
     return () => { cancelled = true; unsubs.forEach((u) => u()) }
   }, [])
+  // the person changed in NeatSystem (mock persona switch, a permission change): ask again
+  useEffect(() => { store?.refresh?.() }, [store, host.me.id, host.me.position, host.me.is_admin])
   const profile = auth.profile
   useEffect(() => { if (!canEditAnything(profile)) setEditMode(false) }, [profile])
   useEffect(() => { urlCache.current.clear() }, [profile?.role])
@@ -83,10 +68,11 @@ export default function App() {
   // Phones: two items side by side; desktop: capped; short windows: a tote still fits.
   useEffect(() => {
     const fit = () => {
-      const w = window.innerWidth
-      const h = window.innerHeight
-      const ts = Math.max(0.9, Math.min(2.05, (w - 40) / 330, (h - 170) / 270))
-      document.documentElement.style.setProperty('--ts', ts.toFixed(3))
+      // the tab's own width (NeatSystem's sidebar takes part of the window)
+      const w = appRef.current?.clientWidth || window.innerWidth
+      const h = window.innerHeight - 70
+      const ts = Math.max(0.9, Math.min(1.7, (w - 40) / 330, (h - 170) / 270))
+      appRef.current?.style.setProperty('--ts', ts.toFixed(3))
     }
     fit()
     addEventListener('resize', fit)
@@ -109,13 +95,13 @@ export default function App() {
     if (!nodes) return
     if (route.kind === 'legacy') {
       const n = nodes.find((x) => x.id === route.id && x.type === 'hub')
-      location.replace(n ? hrefFor(nodes, n.id) : '#/')
+      location.replace(n ? hrefFor(nodes, n.id) : href())
     } else if (route.kind === 'hub') {
-      if (!hub) location.replace('#/')
+      if (!hub) location.replace(href())
       else {
         // Normalise (e.g. a link that used an id instead of the slug).
         const canonical = hubPath(nodes, hub.id)
-        if (canonical !== route.key) history.replaceState(null, '', '#/' + canonical)
+        if (canonical !== route.key) history.replaceState(history.state, '', href(canonical))
       }
     }
   }, [nodes, route, hub])
@@ -204,66 +190,37 @@ export default function App() {
   const season = hub ? seasonOf(hub.season) : null
 
   return (
-    <div className="app">
+    <div className="app" ref={appRef}>
       <header className="topbar">
-        <a className="brand" href="#/" onClick={(e) => { if (route.kind !== 'home') { e.preventDefault(); goUp(null) } }}>
-          <span className="logo">1943</span>
-          <span className="name">NEATHUB</span>
-        </a>
         <nav className="crumbs" aria-label="מיקום">
           {route.kind === 'admin' ? (
-            <><a href="#/">הבית</a> › <b>משתמשים</b></>
+            <><a href={href()}>NEATHUB</a> › <b>מי עורך מה</b></>
           ) : (
-            trail.length > 0 && (
-              <>
-                <a href="#/" onClick={(e) => { e.preventDefault(); goUp(null) }}>הבית</a>
-                {trail.map((n, i) => (
-                  <span key={n.id}>
-                    {' › '}
-                    {i === trail.length - 1 ? <b>{n.title}</b> : <a href={hrefFor(nodes, n.id)} onClick={(e) => { e.preventDefault(); goUp(n.id) }}>{n.title}</a>}
-                  </span>
-                ))}
-              </>
-            )
+            <>
+              {trail.length > 0 ? <a href={href()} onClick={(e) => { e.preventDefault(); goUp(null) }}>NEATHUB</a> : <b className="home-title">NEATHUB</b>}
+              {trail.map((n, i) => (
+                <span key={n.id}>
+                  {' › '}
+                  {i === trail.length - 1 ? <b>{n.title}</b> : <a href={hrefFor(nodes, n.id)} onClick={(e) => { e.preventDefault(); goUp(n.id) }}>{n.title}</a>}
+                </span>
+              ))}
+            </>
           )}
         </nav>
         <div className="spacer" />
         {nodes && route.kind !== 'admin' && <Search nodes={nodes} profile={profile} onPick={pickSearch} />}
-        {isDemo && store?.setDemoRole && (
-          <select className="ctl demo" value={profile?.role || 'guest'} onChange={(e) => store.setDemoRole(e.target.value)} aria-label="מצב דמו – תפקיד">
-            <option value="guest">דמו: אורח</option>
-            <option value="member">דמו: חבר/ה</option>
-            <option value="lead">דמו: ראש צוות (תוכנה)</option>
-            <option value="mentor">דמו: מנטור/ית</option>
-          </select>
-        )}
         {canEditAnything(profile) && route.kind !== 'admin' && (
-          <button type="button" className={`ctl ${editMode ? 'on' : ''}`} onClick={() => setEditMode((v) => !v)} aria-pressed={editMode} aria-label={editMode ? 'סיום עריכה' : 'עריכה'}>
-            <i className="ti ti-pencil" aria-hidden="true" /> <span className="ctl-label">{editMode ? 'סיום עריכה' : 'עריכה'}</span>
+          <button type="button" className={`btn sm ${editMode ? 'primary' : 'tint'}`} onClick={() => setEditMode((v) => !v)} aria-pressed={editMode}>
+            <Ti n="pencil" size={16} /> <span className="ctl-label">{editMode ? 'סיום עריכה' : 'עריכה'}</span>
           </button>
         )}
-        <button type="button" className="ctl about-btn" onClick={() => setAbout(true)} aria-label="אודות">
-          <i className="ti ti-info-circle" aria-hidden="true" /> <span>אודות</span>
+        <button type="button" className="btn sm ghost about-btn" onClick={() => setAbout(true)} aria-label="אודות">
+          <Ti n="info-circle" size={16} /> <span>אודות</span>
         </button>
         {profile?.role === 'mentor' && route.kind !== 'admin' && (
-          <a className="ctl" href="#/admin" aria-label="משתמשים"><i className="ti ti-users" aria-hidden="true" /> <span className="ctl-label">משתמשים</span></a>
-        )}
-        {auth.user ? (
-          <button type="button" className="ctl" aria-label="יציאה" onClick={() => store.signOut()} title={profile ? ROLE_LABEL[profile.role] : ''}>
-            <i className="ti ti-logout" aria-hidden="true" /> <span className="ctl-label">יציאה</span>
-          </button>
-        ) : (
-          !isDemo && (
-            <button type="button" className="ctl accent" onClick={() => signIn()}>
-              <i className="ti ti-brand-google" aria-hidden="true" /> כניסה
-            </button>
-          )
+          <a className="btn sm ghost" href={href('admin')} aria-label="מי עורך מה"><Ti n="users" size={16} /> <span className="ctl-label">מי עורך מה</span></a>
         )}
       </header>
-
-      {profile?.role === 'pending' && (
-        <div className="banner">החשבון שלך ממתין לאישור של מנטור. בינתיים רואים רק את מה שציבורי.</div>
-      )}
 
       <main className="stage" ref={stageRef}>
         {hub && !hubLocked && (
@@ -274,7 +231,7 @@ export default function App() {
               onClick={() => goUp(hub.parentId || null)}
               title={`חזרה ל${trail.length > 1 ? trail[trail.length - 2].title : 'דף הבית'}`}
             >
-              <i className="ti ti-arrow-right" aria-hidden="true" /> חזרה
+              <Ti n="arrow-right" /> חזרה
             </button>
             {canEditHere ? (
               <label className="season-pick">
@@ -287,7 +244,7 @@ export default function App() {
               <span className="season-tag">{seasonLabel(season)}</span>
             )}
             <button type="button" className="share-btn" onClick={shareHub}>
-              <i className="ti ti-link" aria-hidden="true" /> העתקת קישור
+              <Ti n="link" /> העתקת קישור
             </button>
           </div>
         )}
@@ -298,22 +255,13 @@ export default function App() {
             <p className="empty">טוען…</p>
           ) : hubLocked ? (
             <div className="locked-hub">
-              <i className="ti ti-lock big-lock" aria-hidden="true" />
+              <Ti n="lock" className="big-lock" />
               <h2>{hub.title}</h2>
-              {auth.user ? (
-                <p>אין לך הרשאה לפתוח את הארגז הזה. אפשר לבקש ממנטור.</p>
-              ) : (
-                <>
-                  <p>צריך להתחבר כדי לפתוח את הארגז הזה.</p>
-                  <button type="button" className="btn primary" onClick={() => signIn()}>
-                    <i className="ti ti-brand-google" aria-hidden="true" /> {isDemo ? 'כניסה (דמו: מנטור)' : 'כניסה עם Google'}
-                  </button>
-                </>
-              )}
-              <a className="btn ghost" href="#/">לדף הבית</a>
+              <p>אין לך הרשאה לפתוח את הארגז הזה. אפשר לבקש ממנטור.</p>
+              <a className="btn ghost" href={href()}>לדף הבית של NEATHUB</a>
             </div>
           ) : route.kind === 'admin' ? (
-            profile?.role === 'mentor' ? <Admin store={store} nodes={nodes} me={profile} toast={toast} /> : <p className="empty">רק מנטורים יכולים לנהל משתמשים.</p>
+            profile?.role === 'mentor' ? <Admin store={store} nodes={nodes} me={profile} toast={toast} /> : <p className="empty">רק מנטורים מחלקים הרשאות עריכה.</p>
           ) : (
             <Stage
               hub={hub}
@@ -347,24 +295,14 @@ export default function App() {
       {gate && (
         <div className="scrim center" onMouseDown={(e) => e.target === e.currentTarget && setGate(null)}>
           <div className="modal" role="dialog" aria-label="פריט נעול">
-            <i className="ti ti-lock big-lock" aria-hidden="true" />
+            <Ti n="lock" className="big-lock" />
             <h2>{gate.title}</h2>
-            {auth.user ? (
-              <p>אין לך הרשאה לפתוח את זה. אפשר לבקש ממנטור.</p>
-            ) : (
-              <>
-                <p>צריך להתחבר כדי לפתוח את זה.</p>
-                <button type="button" className="btn primary" onClick={() => { setGate(null); signIn() }}>
-                  <i className="ti ti-brand-google" aria-hidden="true" /> {isDemo ? 'כניסה (דמו: מנטור)' : 'כניסה עם Google'}
-                </button>
-              </>
-            )}
+            <p>אין לך הרשאה לפתוח את זה. אפשר לבקש ממנטור.</p>
             <button type="button" className="btn ghost" onClick={() => setGate(null)}>סגירה</button>
           </div>
         </div>
       )}
 
-      <div className={`toast ${toastMsg ? 'on' : ''}`} role="status">{toastMsg}</div>
     </div>
   )
 }

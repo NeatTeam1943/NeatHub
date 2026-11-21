@@ -1,25 +1,26 @@
+import Ti from './Ti.jsx'
 import { useEffect, useMemo, useState } from 'react'
 import { ROLE_LABEL, HOME } from '../lib/model.js'
 import { norm } from '../lib/text.js'
 
 const ROLE_FILTERS = [
   ['all', 'כולם'],
-  ['pending', 'ממתינים'],
   ['member', 'חברי קבוצה'],
   ['lead', 'ראשי צוותים'],
   ['mentor', 'מנטורים'],
 ]
 const SORTS = [
-  ['smart', 'ממתינים קודם'],
+  ['smart', 'ראשי צוותים קודם'],
   ['name', 'לפי שם'],
   ['new', 'הצטרפו לאחרונה'],
   ['role', 'לפי תפקיד'],
 ]
-const ROLE_ORDER = { pending: 0, mentor: 1, lead: 2, member: 3 }
+const ROLE_ORDER = { lead: 0, mentor: 1, member: 2 }
 const time = (t) => (typeof t === 'number' ? t : t?.toMillis?.() ?? 0)
 const byName = (a, b) => (a.name || a.email || '').localeCompare(b.name || b.email || '', 'he')
 
-// Mentors approve users, set roles, and pick which top-level totes a team lead can edit.
+// Mentors pick which top-level totes (and the home page) each team lead can edit.
+// Roles themselves come from NeatSystem (position + permissions), not from here.
 export default function Admin({ store, nodes, me, toast }) {
   const [users, setUsers] = useState(null)
   const [err, setErr] = useState('')
@@ -58,7 +59,7 @@ export default function Admin({ store, nodes, me, toast }) {
       return words.every((w) => hay.includes(w))
     })
     const cmp = {
-      smart: (a, b) => (a.role === 'pending' ? 0 : 1) - (b.role === 'pending' ? 0 : 1) || byName(a, b),
+      smart: (a, b) => (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9) || byName(a, b),
       name: byName,
       new: (a, b) => time(b.createdAt) - time(a.createdAt) || byName(a, b),
       role: (a, b) => (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9) || byName(a, b),
@@ -74,15 +75,19 @@ export default function Admin({ store, nodes, me, toast }) {
 
   return (
     <div className="admin">
-      <h2>משתמשים והרשאות</h2>
+      <h2>מי עורך מה</h2>
       <p className="muted">
         מנטורים עורכים הכול. ראש צוות עורך רק את מה שסומן לו כאן: ארגז = הארגז וכל מה שבתוכו (כולל העונה);
         דף הבית = הוספת פריטים לדף הבית ועריכת הקישורים שעליו. ארגז חדש שראש צוות יוצר נוסף לו אוטומטית, ואפשר להוריד אותו.
       </p>
+      <p className="muted">
+        התפקיד מגיע מ-NeatSystem: מנטורים ואדמינים הם "מנטור" כאן; רש"צים וקפטנים — "ראש צוות". אפשר לתת לכל אחד את ההרשאה
+        "עריכת ארגזים ב-NEATHUB" מהפרופיל שלו ב-NeatSystem.
+      </p>
 
       <div className="ufilters">
         <label className="usearch">
-          <i className="ti ti-search" aria-hidden="true" />
+          <Ti n="search" />
           <input
             type="search"
             value={q}
@@ -126,22 +131,15 @@ export default function Admin({ store, nodes, me, toast }) {
       <ul className="users">
         {shown.map((u) => {
           return (
-            <li key={u.uid} className={u.role === 'pending' ? 'pending' : ''}>
+            <li key={u.uid}>
               <div className="who">
                 {u.photo ? <img src={u.photo} alt="" referrerPolicy="no-referrer" /> : <span className="avatar">{(u.name || u.email || '?')[0]}</span>}
                 <div>
                   <b>{u.name || '—'}{u.uid === me?.uid ? ' (את/ה)' : ''}</b>
-                  <span dir="ltr">{u.email}</span>
+                  {u.email && <span dir="ltr">{u.email}</span>}
                 </div>
               </div>
-              <select
-                value={u.role}
-                disabled={u.uid === me?.uid}
-                onChange={(e) => update(u, { role: e.target.value, ...(e.target.value !== 'lead' ? { scopes: [] } : {}) })}
-                aria-label={`תפקיד של ${u.name || u.email}`}
-              >
-                {Object.entries(ROLE_LABEL).map(([k, t]) => <option key={k} value={k}>{t}</option>)}
-              </select>
+              <span className={`rolepill ${u.role}`}>{ROLE_LABEL[u.role] ?? u.role}</span>
               {u.role === 'lead' && (
                 <div className="scopes">
                   {grants.map((h) => {
@@ -153,7 +151,7 @@ export default function Admin({ store, nodes, me, toast }) {
                           checked={on}
                           onChange={() => update(u, { scopes: on ? u.scopes.filter((s) => s !== h.id) : [...(u.scopes || []), h.id] })}
                         />
-                        {h.home && <i className="ti ti-home" aria-hidden="true" />}
+                        {h.home && <Ti n="home" />}
                         {h.title}
                       </label>
                     )

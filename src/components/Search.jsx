@@ -1,3 +1,4 @@
+import Ti from './Ti.jsx'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ancestors, canView } from '../lib/model.js'
 import { drawPiece, seasonOf } from '../lib/seasons.js'
@@ -95,14 +96,14 @@ export default function Search({ nodes, profile, onPick }) {
     <div ref={wrapRef} className={`search ${expanded ? 'expanded' : ''}`}>
       <button
         type="button"
-        className="ctl search-toggle"
+        className="search-toggle"
         aria-label="חיפוש"
         onClick={() => { setExpanded(true); requestAnimationFrame(() => inputRef.current?.focus()) }}
       >
-        <i className="ti ti-search" aria-hidden="true" />
+        <Ti n="search" />
       </button>
       <div className="search-field">
-        <i className="ti ti-search" aria-hidden="true" />
+        <Ti n="search" />
         <input
           ref={inputRef}
           type="search"

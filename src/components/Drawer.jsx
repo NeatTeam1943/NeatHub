@@ -1,3 +1,5 @@
+import Ti from './Ti.jsx'
+import { href } from '../lib/nav.js'
 import { useEffect, useMemo, useState } from 'react'
 import { SEASONS, PIECES, seasonOf, seasonLabel, DEFAULT_SEASON } from '../lib/seasons.js'
 import { VIS_LABEL, VIS_RANK, childrenOf, descendants, canEditNode, canAddToHome, canDeleteNode, recomputeSubtree, newId, ancestors, slugify, hubPath, SLUG_RE, RESERVED_SLUGS } from '../lib/model.js'
@@ -145,7 +147,7 @@ export default function Drawer({ node, parentId, nodes, profile, store, onClose,
       <aside className="drawer" role="dialog" aria-label={isNew ? 'הוספת פריט' : 'עריכת פריט'}>
         <header>
           <h2>{isNew ? 'הוספה' : 'עריכה'}</h2>
-          <button type="button" className="icon-btn" onClick={onClose} aria-label="סגירה"><i className="ti ti-x" /></button>
+          <button type="button" className="icon-btn" onClick={onClose} aria-label="סגירה"><Ti n="x" /></button>
         </header>
 
         <div className="preview">
@@ -203,10 +205,10 @@ export default function Drawer({ node, parentId, nodes, profile, store, onClose,
           <div className="field">
             <span className="lbl">תמונה</span>
             <div className="row-btns">
-              <label className="btn"><i className="ti ti-upload" aria-hidden="true" /> העלאה<input type="file" accept="image/*" hidden onChange={onImage} /></label>
+              <label className="btn"><Ti n="upload" /> העלאה<input type="file" accept="image/*" hidden onChange={onImage} /></label>
               {d.type === 'link' && isValidUrl(url) && (
                 <button type="button" className="btn" disabled={iconBusy} onClick={pickSiteIcon}>
-                  <i className="ti ti-world" aria-hidden="true" /> {iconBusy ? 'מחפש…' : 'אייקון האתר'}
+                  <Ti n="world" /> {iconBusy ? 'מחפש…' : 'אייקון האתר'}
                 </button>
               )}
               {(d.imageData || d.imageUrl) && (
@@ -220,7 +222,7 @@ export default function Drawer({ node, parentId, nodes, profile, store, onClose,
           <label className="field">
             <span className="lbl">כתובת לשיתוף</span>
             <div className="slug-row" dir="ltr">
-              <span className="slug-prefix">{d.parentId ? `#/${hubPath(nodes, d.parentId)}/` : '#/'}</span>
+              <span className="slug-prefix">{d.parentId ? `${href(hubPath(nodes, d.parentId))}/` : `${href()}/`}</span>
               <input
                 dir="ltr"
                 value={d.slug ?? ''}
@@ -273,8 +275,8 @@ export default function Drawer({ node, parentId, nodes, profile, store, onClose,
           <div className="field">
             <span className="lbl">סדר</span>
             <div className="row-btns">
-              <button type="button" className="btn" onClick={() => move(-1)}><i className="ti ti-arrow-right" aria-hidden="true" /> מוקדם יותר</button>
-              <button type="button" className="btn" onClick={() => move(1)}>מאוחר יותר <i className="ti ti-arrow-left" aria-hidden="true" /></button>
+              <button type="button" className="btn" onClick={() => move(-1)}><Ti n="arrow-right" /> מוקדם יותר</button>
+              <button type="button" className="btn" onClick={() => move(1)}>מאוחר יותר <Ti n="arrow-left" /></button>
             </div>
           </div>
         )}
@@ -283,7 +285,7 @@ export default function Drawer({ node, parentId, nodes, profile, store, onClose,
 
         <footer>
           <button type="button" className="btn primary" disabled={busy} onClick={save}>{isNew ? 'הוספה' : 'שמירה'}</button>
-          {!isNew && canDeleteNode(profile, node) && <button type="button" className="btn danger" disabled={busy} onClick={remove}><i className="ti ti-trash" aria-hidden="true" /> מחיקה</button>}
+          {!isNew && canDeleteNode(profile, node) && <button type="button" className="btn danger" disabled={busy} onClick={remove}><Ti n="trash" /> מחיקה</button>}
         </footer>
       </aside>
     </div>

@@ -1,0 +1,17 @@
+name: Checks
+
+# The tab is built and its SQL is tested inside NeatSystem (it is the
+# submodule systems/neathub there). Here: the pure model tests, fast.
+on:
+  pull_request:
+  push:
+
+jobs:
+  model:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm test
